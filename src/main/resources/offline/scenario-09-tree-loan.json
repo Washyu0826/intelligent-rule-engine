@@ -1,0 +1,69 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "貸款審核為階層式判斷：先看信用評分是否及格（低於600分直接拒絕），再看負債比是否過高（超過50%需人工審核），最後看收入水準決定額度。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "inputs": [
+      { "name": "credit_score", "typeRef": "INTEGER" },
+      { "name": "debt_ratio", "typeRef": "DECIMAL" },
+      { "name": "annual_income", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "approval", "typeRef": "ENUM", "allowedValues": ["核准", "人工審核", "拒絕"] },
+      { "name": "credit_limit", "typeRef": "INTEGER" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "credit_score", "operator": "lessThan", "value": 600 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "approval", "value": "拒絕" },
+          { "field": "credit_limit", "value": 0 },
+          { "field": "remark", "value": "信用評分低於600分，不予核准" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "condition": { "field": "debt_ratio", "operator": "greaterThan", "value": 0.5 },
+        "trueBranch": {
+          "nodeId": "N04",
+          "results": [
+            { "field": "approval", "value": "人工審核" },
+            { "field": "credit_limit", "value": 100000 },
+            { "field": "remark", "value": "負債比超過50%，需人工審核" }
+          ]
+        },
+        "falseBranch": {
+          "nodeId": "N05",
+          "condition": { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          "trueBranch": {
+            "nodeId": "N06",
+            "results": [
+              { "field": "approval", "value": "核准" },
+              { "field": "credit_limit", "value": 500000 },
+              { "field": "remark", "value": "高收入客戶，核准高額度" }
+            ]
+          },
+          "falseBranch": {
+            "nodeId": "N07",
+            "results": [
+              { "field": "approval", "value": "核准" },
+              { "field": "credit_limit", "value": 200000 },
+              { "field": "remark", "value": "標準核准" }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0"
+}

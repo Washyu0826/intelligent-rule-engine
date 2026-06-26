@@ -1,0 +1,47 @@
+# ============================================================
+# Rules MCP Server — Docker Compose
+# ============================================================
+# Usage:
+#   dev:  docker compose up
+#   prod: docker compose --profile prod up
+# ============================================================
+
+services:
+  # ── Rules MCP Server ──
+  rules-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE:-default}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - CLAUDE_API_KEY=${CLAUDE_API_KEY:-}
+      - JAVA_OPTS=-Xmx512m -Xms256m
+      # LLM provider config (override via .env)
+      - RULES_LLM_PROVIDER=${RULES_LLM_PROVIDER:-gemini}
+      - RULES_LLM_MODEL=${RULES_LLM_MODEL:-gemini-2.0-flash}
+      - RULES_LLM_TIMEOUT_SECONDS=${RULES_LLM_TIMEOUT_SECONDS:-30}
+      # Ollama (if using local)
+      - RULES_LLM_OLLAMA_BASE_URL=${RULES_LLM_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── Frontend Dev Server (dev only) ──
+  frontend-dev:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend-src/frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    profiles:
+      - dev

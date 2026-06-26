@@ -1,0 +1,28 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "使用了不支援的 operator",
+  "rule": {
+    "inputs": [
+      { "name": "name", "typeRef": "STRING" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "name", "operator": "like", "value": "test%" },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "match" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "results": [
+          { "field": "decision", "value": "no match" }
+        ]
+      }
+    }
+  }
+}

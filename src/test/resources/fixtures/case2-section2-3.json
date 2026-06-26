@@ -1,0 +1,37 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "case 2 §2.3 — 特約通路時授權書編號不可等於受理編號（v3.14 場景驅動草稿）。§2.1/§2.2 因等 BU 端 B8/B9 受理編號規則/有效授權書編號規則 regex 而暫缺。本 fixture 僅 §2.3，可獨立跑。註：只有 1 條規則，暫用 FIRST；§2.1/§2.2 補齊後切回 MULTI 或 v3.14 ALL_FAIL。",
+  "evaluation": {
+    "completeness": "PARTIAL",
+    "totalScenarios": 1,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "channel", "typeRef": "ENUM",
+        "allowedValues": ["保代","直效","特約"] },
+      { "name": "authMatchesAcceptanceNumber", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R23",
+        "priority": 1,
+        "conditions": [
+          { "field": "channel", "operator": "equals", "value": "特約" },
+          { "field": "authMatchesAcceptanceNumber", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "2.3 特約通路時授權書編號不可等於受理編號" }
+        ]
+      }
+    ]
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.14.0"
+}

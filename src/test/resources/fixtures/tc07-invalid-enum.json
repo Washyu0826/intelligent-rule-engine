@@ -1,0 +1,35 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "TC07 測試：ENUM 值不在 allowedValues 中",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "人工評估", "拒保"] }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 35] }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      },
+      {
+        "ruleId": "R02",
+        "priority": 2,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [36, 50] }
+        ],
+        "results": [
+          { "field": "decision", "value": "拒絕" }
+        ]
+      }
+    ]
+  }
+}

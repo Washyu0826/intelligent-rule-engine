@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rules-mcp-frontend
+  namespace: rules-mcp
+  labels:
+    app: rules-mcp
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: rules-mcp
+    component: frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

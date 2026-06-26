@@ -1,0 +1,39 @@
+# ==========================================================
+# application-prod.yml — 生產環境配置
+# ==========================================================
+# 使用方式：
+#   java -jar rules-mcp-server.jar --spring.profiles.active=prod
+# ==========================================================
+
+rules:
+  llm:
+    provider: ${RULES_LLM_PROVIDER:claude}
+    model: ${RULES_LLM_MODEL:claude-sonnet-4-6}
+    api-key: ${RULES_LLM_API_KEY:}
+    timeout-seconds: 300
+    max-retry: 3
+    self-repair: false
+  cors:
+    allowed-origins: ${RULES_CORS_ORIGINS:https://your-production-domain.com}
+  security:
+    api-key-enabled: true
+    api-key: ${RULES_API_KEY:}
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    com.ruleengine.rules: WARN
+    root: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{traceId}] %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: authorized

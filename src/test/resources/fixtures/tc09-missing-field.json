@@ -1,0 +1,24 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "TC09 測試：故意移除 hitPolicy 欄位",
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 65] }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    ]
+  }
+}

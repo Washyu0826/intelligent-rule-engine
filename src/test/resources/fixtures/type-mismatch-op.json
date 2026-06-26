@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：operator 與 typeRef 不相容（BOOLEAN 不可用 greaterThan）",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "is_vip", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "discount", "typeRef": "DECIMAL" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "is_vip", "operator": "greaterThan", "value": true }
+        ],
+        "results": [
+          { "field": "discount", "value": 0.1 }
+        ]
+      }
+    ]
+  }
+}

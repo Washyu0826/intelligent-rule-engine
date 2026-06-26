@@ -1,0 +1,100 @@
+# NGINX Ingress + cert-manager（Let's Encrypt / 內部 CA）
+#
+# 路徑分流：
+#   /api/*     → backend  :8080（剝除 /api 前綴由 Spring Boot 處理）
+#   /actuator/ → backend  :8080（僅內部監控可達 — 用 source-range annotation 限制）
+#   其他       → frontend :8080
+#
+# 若採 Istio Gateway，刪除本檔，改用 Gateway + VirtualService 並啟用 mTLS。
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rules-mcp
+  namespace: rules-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # 安全 headers — OWASP 推薦
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Permissions-Policy: geolocation=(), microphone=(), camera=()";
+    # Rate limit — 每 IP 100 req/min（與 ConfigMap 應用層限流互補）
+    nginx.ingress.kubernetes.io/limit-rpm: "100"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "2"
+    # 上傳 body 大小（規則 JSON 通常 <1MB，留餘裕）
+    nginx.ingress.kubernetes.io/proxy-body-size: "5m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - rules-mcp.group.internal
+      secretName: rules-mcp-tls
+  rules:
+    - host: rules-mcp.group.internal
+      http:
+        paths:
+          - path: /tools
+            pathType: Prefix
+            backend:
+              service:
+                name: rules-mcp-backend
+                port:
+                  number: 8080
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: rules-mcp-backend
+                port:
+                  number: 8080
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: rules-mcp-backend
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rules-mcp-frontend
+                port:
+                  number: 8080
+---
+# 內部監控專用：/actuator/* 僅允許 observability namespace 來源
+# （Prometheus 透過 ServiceMonitor 直連 backend Service，但若有需要外部走 ingress 的場景保留）
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rules-mcp-actuator
+  namespace: rules-mcp
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # 限制來源 IP（替換為 Prometheus / 監控系統 CIDR）
+    nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: actuator-basic-auth
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - rules-mcp-internal.group.internal
+      secretName: rules-mcp-actuator-tls
+  rules:
+    - host: rules-mcp-internal.group.internal
+      http:
+        paths:
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: rules-mcp-backend
+                port:
+                  number: 8080

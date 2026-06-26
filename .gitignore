@@ -1,0 +1,21 @@
+﻿target/
+.idea/
+*.iml
+*.class
+.DS_Store
+src/main/resources/application-local.yml
+.claude/
+frontend-src/frontend/tsconfig.tsbuildinfo
+
+# Local environment variables (含 API keys，絕對不可提交)
+.env
+.env.local
+.env.*.local
+
+# Demo curl 跑測產物（非原始碼）
+demo_curl_out/
+
+# 本地產物 / 個人文件，不上傳公開 repo
+*.log
+demo-start.ps1
+docs/面試*.md

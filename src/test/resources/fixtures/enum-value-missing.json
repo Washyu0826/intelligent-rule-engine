@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：ENUM 缺少 allowedValues",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "region", "typeRef": "ENUM" }
+    ],
+    "outputs": [
+      { "name": "rate", "typeRef": "DECIMAL" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "region", "operator": "equals", "value": "亞洲" }
+        ],
+        "results": [
+          { "field": "rate", "value": 1.0 }
+        ]
+      }
+    ]
+  }
+}

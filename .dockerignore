@@ -1,0 +1,13 @@
+target/
+node_modules/
+.git/
+.idea/
+*.iml
+.mvn/repository
+frontend-src/frontend/node_modules/
+frontend-src/frontend/dist/
+*.log
+.env
+.env.local
+tmp_*
+docs/

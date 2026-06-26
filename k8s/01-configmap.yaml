@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rules-mcp-config
+  namespace: rules-mcp
+  labels:
+    app: rules-mcp
+data:
+  # Spring profile
+  SPRING_PROFILES_ACTIVE: "cloud"
+
+  # LLM Provider 預設（可按 deployment 改）
+  RULES_LLM_PROVIDER: "claude"
+  RULES_LLM_TIMEOUT_SECONDS: "30"
+
+  # Caching（cloud profile 切到 Redis）
+  CACHE_PROVIDER: "redis"
+
+  # JVM 參數（容器化建議）
+  JAVA_TOOL_OPTIONS: >-
+    -XX:MaxRAMPercentage=75.0
+    -XX:+UseG1GC
+    -XX:+ExitOnOutOfMemoryError
+    -Djava.security.egd=file:/dev/./urandom
+
+  # Observability 相關
+  MANAGEMENT_METRICS_TAGS_APPLICATION: "rules-mcp"
+  MANAGEMENT_METRICS_TAGS_ENV: "prod"
+
+  # OpenTelemetry（若有 collector）
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector.observability:4317"
+  OTEL_SERVICE_NAME: "rules-mcp-backend"
+  OTEL_RESOURCE_ATTRIBUTES: "service.namespace=rules-mcp,deployment.environment=prod"
+
+  # Audit log 落地策略（cloud profile 改寫至 S3 / Kafka）
+  AUDIT_SINK: "kafka"
+  AUDIT_KAFKA_BOOTSTRAP: "kafka.observability:9092"
+  AUDIT_KAFKA_TOPIC: "rules-mcp.audit"
+
+  # Rate limit
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "100"
+  RATE_LIMIT_BURST: "20"

@@ -1,0 +1,107 @@
+# Zero-trust NetworkPolicy
+#
+# 1) default-deny — namespace 內預設拒絕所有 ingress/egress
+# 2) backend-allow-ingress — 僅允許從 ingress namespace（NGINX / Istio）與 frontend 進入 8080
+# 3) backend-allow-egress — 僅允許出口至 DNS、observability、Postgres、Redis、Kafka，
+#    以及 LLM API 的 HTTPS（透過 egress gateway / NAT）
+#
+# 注意：CNI 必須支援 NetworkPolicy（Calico / Cilium / AWS VPC CNI 啟用 policy enforcement）
+# ----------------------------------------------------------------
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: rules-mcp
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-allow-ingress
+  namespace: rules-mcp
+spec:
+  podSelector:
+    matchLabels:
+      app: rules-mcp
+      component: backend
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        # NGINX Ingress / Istio Gateway 所在的 namespace
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: istio-system
+        # 前端 SPA 後端代理
+        - podSelector:
+            matchLabels:
+              app: rules-mcp
+              component: frontend
+      ports:
+        - protocol: TCP
+          port: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-allow-egress
+  namespace: rules-mcp
+spec:
+  podSelector:
+    matchLabels:
+      app: rules-mcp
+      component: backend
+  policyTypes:
+    - Egress
+  egress:
+    # DNS（kube-system）
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Observability stack（Prometheus / OTel collector / Loki）
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: observability
+      ports:
+        - protocol: TCP
+          port: 4317   # OTLP gRPC
+        - protocol: TCP
+          port: 9092   # Kafka audit sink
+    # Postgres / Redis（資料層 namespace）
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data
+      ports:
+        - protocol: TCP
+          port: 5432
+        - protocol: TCP
+          port: 6379
+    # 出口至公網 LLM API（Anthropic / OpenAI / Google）
+    # 強烈建議改走 egress gateway（Istio EgressGateway）以集中管控、稽核、TLS 終結
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # 排除 cluster 內網段，強制走集群內服務
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443

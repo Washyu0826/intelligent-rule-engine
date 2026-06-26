@@ -1,0 +1,70 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為衝突偵測測試案例，故意設計條件重疊的規則。包含 2 個條件欄位（age 年齡、income 收入）與 2 個結果欄位（decision 決策、remark 備註）。R01 的 age 範圍 [18,40] 與 R02 的 age 範圍 [30,60] 在 [30,40] 重疊，加上 income 條件也重疊，策略為 FIRST 時會產生 INCONSISTENT_TABLE 錯誤。",
+  "evaluation": {
+    "completeness": "INCOMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 0.6,
+    "conflictDetection": "HAS_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "income", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["核准", "待審", "拒絕"] },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 40] },
+          { "field": "income", "operator": "greaterThanOrEqual", "value": 30000 }
+        ],
+        "results": [
+          { "field": "decision", "value": "核准" },
+          { "field": "remark", "value": "年輕高收入直接核准" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [30, 60] },
+          { "field": "income", "operator": "greaterThanOrEqual", "value": 50000 }
+        ],
+        "results": [
+          { "field": "decision", "value": "核准" },
+          { "field": "remark", "value": "中年高收入核准" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 40] },
+          { "field": "income", "operator": "lessThan", "value": 30000 }
+        ],
+        "results": [
+          { "field": "decision", "value": "待審" },
+          { "field": "remark", "value": "年輕低收入需審查" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "age", "operator": "greaterThan", "value": 60 },
+          { "field": "income", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "decision", "value": "拒絕" },
+          { "field": "remark", "value": "超齡拒絕" }
+        ]
+      }
+    ]
+  }
+}

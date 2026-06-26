@@ -1,0 +1,69 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "壽險核保流程為階層式判斷：先看年齡（超過65歲直接拒保），再看是否有慢性病（有則人工評估），最後看BMI是否正常（正常承保、異常加費）。條件有明確的先後依賴，適合 DecisionTree。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "has_chronic_disease", "typeRef": "BOOLEAN" },
+      { "name": "bmi_normal", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "加費承保", "人工評估", "拒保"] },
+      { "name": "premium_rate", "typeRef": "DECIMAL" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "age", "operator": "greaterThan", "value": 65 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "拒保" },
+          { "field": "premium_rate", "value": 0.0 },
+          { "field": "remark", "value": "年齡超過65歲，不符合投保條件" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "condition": { "field": "has_chronic_disease", "operator": "equals", "value": true },
+        "trueBranch": {
+          "nodeId": "N04",
+          "results": [
+            { "field": "decision", "value": "人工評估" },
+            { "field": "premium_rate", "value": 1.5 },
+            { "field": "remark", "value": "有慢性病史，需人工審核" }
+          ]
+        },
+        "falseBranch": {
+          "nodeId": "N05",
+          "condition": { "field": "bmi_normal", "operator": "equals", "value": true },
+          "trueBranch": {
+            "nodeId": "N06",
+            "results": [
+              { "field": "decision", "value": "承保" },
+              { "field": "premium_rate", "value": 1.0 },
+              { "field": "remark", "value": "標準承保" }
+            ]
+          },
+          "falseBranch": {
+            "nodeId": "N07",
+            "results": [
+              { "field": "decision", "value": "加費承保" },
+              { "field": "premium_rate", "value": 1.3 },
+              { "field": "remark", "value": "BMI異常，加費承保" }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0"
+}

@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: rules-mcp-server
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+  web:
+    resources:
+      static-locations: classpath:/static/,file:./static/
+
+  ai:
+    mcp:
+      server:
+        name: rules-mcp-server
+        version: 1.0.0
+        type: SYNC
+        instructions: >
+          Rules MCP Server 提供以 DecisionTable 為主的規則生成、推薦、驗證與分析服務。
+          本階段正式支援的規則型態只有 DecisionTable。
+          DecisionTree 與 ScoreCard 僅屬後續階段規劃，尚未正式對外承諾。
+        capabilities:
+          tool: true
+          resource: true
+
+# ==========================================
+# 版本管理（計畫書要求 schemaVersion / promptVersion 可追溯）
+# ==========================================
+rules:
+  schema-version: "1.0.0"
+  prompt-version: "p3.13.0"
+  # LLM 設定
+  llm:
+    enabled: true             # true = 由 server 端 LLM 生成；false = 由 MCP client / 外部 AI 先轉換
+    provider: ollama            # gemini | ollama | claude | openai
+    # 全 provider fallback model；建議用各 provider 專屬欄位（rules.llm.{claude|gemini|ollama|openai}.model）
+    # 各 service 的 @Value 會走 ${rules.llm.<provider>.model:${rules.llm.model:<provider 預設>}} 鏈
+    # model: "qwen2.5:7b"        # 已移除全域 model — 避免共用同名導致 Claude/Gemini 拿到 Ollama 的 model 名而打 404
+    api-key: "${CLAUDE_API_KEY:}"   # 12-Factor: 從環境變數注入
+    timeout-seconds: 180
+    max-async-timeout-seconds: 1800   # 多 case 端點（/test-run）非同步逾時封頂；逾時會 cancel(true) 中止剩餘 case
+    max-retry: 3              # Level A: JSON parse retry 上限
+    self-repair: false        # Level B: 驗證錯誤回饋修復（true=品質優先但多花 API 額度，false=速度優先）
+    ollama:
+      base-url: "http://localhost:11434"
+    openai:
+      api-key: "${OPENAI_API_KEY:}"
+      model: "gpt-4o-mini"
+  # 生成前輸入偵測閘（pre-flight gate）—— 純符號、0 token
+  preflight:
+    enabled: true
+    mode: warn              # off（停用、行為不變）| warn（附報告不阻擋）| block（有 ERROR 即短路不打 LLM）
+    min-quality: 0.4        # 完整度低於此值列為 blocker
+    require-outputs: true   # 無任何輸出欄位列為 blocker
+    min-length: 15          # 描述短於此字數列為 blocker
+  # 驗證設定
+  validation:
+    max-tree-depth: 10
+    max-table-rows: 200
+    max-columns: 50
+  # DecisionTree 設定
+  tree:
+    max-repair-rounds: 3
+  # LLM 長工作執行緒池（AsyncExecutorConfig；core=max 固定大小 + 閒置回收 + 有界佇列滿載回 429）
+  executor:
+    llm:
+      pool-size: 8          # /generate /test-run /explain /narrate /evaluate 共用
+      queue-capacity: 32
+    sse:
+      pool-size: 16         # /generate/stream SSE 推送
+      queue-capacity: 64
+
+# ==========================================
+# Observability（計畫書要求 Actuator + Micrometer）
+# ==========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    tags:
+      application: rules-mcp-server
+
+server:
+  port: 8080
+  shutdown: graceful   # 滾動部署時先完成在途請求（含 SSE）再關閉
+
+logging:
+  level:
+    com.ruleengine.rules: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - [%X{traceId}] %msg%n"

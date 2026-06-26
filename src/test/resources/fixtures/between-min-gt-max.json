@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：between 的 min > max",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [65, 18] }
+        ],
+        "results": [
+          { "field": "decision", "value": "錯誤" }
+        ]
+      }
+    ]
+  }
+}

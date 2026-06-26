@@ -1,0 +1,43 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "基本的 DecisionTree 測試案例",
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "has_diabetes", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "拒保", "人工評估"] },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "age", "operator": "greaterThan", "value": 60 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "拒保" },
+          { "field": "remark", "value": "年齡超過60歲" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "condition": { "field": "has_diabetes", "operator": "equals", "value": true },
+        "trueBranch": {
+          "nodeId": "N04",
+          "results": [
+            { "field": "decision", "value": "人工評估" },
+            { "field": "remark", "value": "有糖尿病，需人工評估" }
+          ]
+        },
+        "falseBranch": {
+          "nodeId": "N05",
+          "results": [
+            { "field": "decision", "value": "承保" },
+            { "field": "remark", "value": "標準承保" }
+          ]
+        }
+      }
+    }
+  }
+}

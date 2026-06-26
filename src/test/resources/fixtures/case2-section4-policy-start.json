@@ -1,0 +1,51 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "case 2 §4 — 投保始期檢核（v3.14 場景驅動草稿，僅 §4，依賴 v3.13 既有 valueRef + 相對日期）。每條 fail 拋訊息、多條可同時觸發 → MULTI。受理通路守門待 F1 scope 完成後上移至 RuleEnvelope.scope。",
+  "evaluation": {
+    "completeness": "PARTIAL",
+    "totalScenarios": 2,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "MULTI"
+  },
+  "rule": {
+    "hitPolicy": "MULTI",
+    "inputs": [
+      { "name": "isNetInsurance", "typeRef": "BOOLEAN" },
+      { "name": "newContractPaymentMethod", "typeRef": "STRING" },
+      { "name": "policyStartDate", "typeRef": "DATE" },
+      { "name": "insuredBirthday", "typeRef": "DATE" }
+    ],
+    "outputs": [
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R41",
+        "priority": 1,
+        "comment": "4.1 非網投件且繳費非滿期金/解約金時，投保始期不可超過隔日。但 v3.13 缺 F2 anyOf — 此處先用 newContractPaymentMethod 單欄位，spec 真正要的是 anyOf[new, renewal]。先 stub。",
+        "conditions": [
+          { "field": "isNetInsurance", "operator": "equals", "value": false },
+          { "field": "newContractPaymentMethod", "operator": "notIn", "value": ["滿期金", "解約金"] },
+          { "field": "policyStartDate", "operator": "greaterThan", "valueRef": "$today+1d" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "4.1 投保始期不可超過隔日" }
+        ]
+      },
+      {
+        "ruleId": "R42",
+        "priority": 2,
+        "comment": "4.2 所有案件：投保始期不可小於被保人生日。valueRef 引用另一個 input 欄位（v3.12 既有功能）。",
+        "conditions": [
+          { "field": "policyStartDate", "operator": "lessThan", "valueRef": "insuredBirthday" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "4.2 投保始期不可小於被保人生日" }
+        ]
+      }
+    ]
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.14.0"
+}

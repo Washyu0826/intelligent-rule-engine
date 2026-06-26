@@ -1,0 +1,22 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "缺少 falseBranch 的測試案例",
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "拒保"] }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "age", "operator": "greaterThan", "value": 60 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "拒保" }
+        ]
+      }
+    }
+  }
+}

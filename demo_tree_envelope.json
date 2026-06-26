@@ -1,0 +1,253 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "Demo-ready insurance claim decision tree. The tree first rejects lapsed policies, then routes active claims by incident type, waiting-period status, drunk-driving exclusion, and claim amount thresholds.",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.13.0-handcrafted",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 12,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "inputs": [
+      { "name": "policyStatus", "typeRef": "ENUM", "allowedValues": ["ACTIVE", "LAPSED"] },
+      { "name": "incidentType", "typeRef": "ENUM", "allowedValues": ["ACCIDENT", "ILLNESS", "NATURAL_DEATH"] },
+      { "name": "isDrunkDriving", "typeRef": "BOOLEAN" },
+      { "name": "exceededWaitingPeriod", "typeRef": "BOOLEAN" },
+      { "name": "claimAmount", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["APPROVE", "MANUAL_REVIEW", "COMMITTEE_REVIEW", "REJECT"] },
+      { "name": "reason", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "policyStatus", "operator": "equals", "value": "LAPSED" },
+      "branches": [
+        {
+          "label": "LAPSED",
+          "condition": { "field": "policyStatus", "operator": "equals", "value": "LAPSED" },
+          "child": {
+            "nodeId": "N02",
+            "results": [
+              { "field": "decision", "value": "REJECT" },
+              { "field": "reason", "value": "Policy is lapsed." }
+            ]
+          }
+        },
+        {
+          "label": "ACTIVE",
+          "condition": { "field": "policyStatus", "operator": "equals", "value": "ACTIVE" },
+          "child": {
+            "nodeId": "N03",
+            "branches": [
+              {
+                "label": "ACCIDENT",
+                "condition": { "field": "incidentType", "operator": "equals", "value": "ACCIDENT" },
+                "child": {
+                  "nodeId": "N04",
+                  "condition": { "field": "isDrunkDriving", "operator": "equals", "value": true },
+                  "branches": [
+                    {
+                      "label": "DRUNK_DRIVING",
+                      "condition": { "field": "isDrunkDriving", "operator": "equals", "value": true },
+                      "child": {
+                        "nodeId": "N05",
+                        "results": [
+                          { "field": "decision", "value": "REJECT" },
+                          { "field": "reason", "value": "Accident claim excluded by drunk-driving clause." }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "NO_DRUNK_DRIVING",
+                      "condition": { "field": "isDrunkDriving", "operator": "equals", "value": false },
+                      "child": {
+                        "nodeId": "N06",
+                        "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                        "branches": [
+                          {
+                            "label": "AMOUNT_LE_50000",
+                            "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                            "child": {
+                              "nodeId": "N07",
+                              "results": [
+                                { "field": "decision", "value": "APPROVE" },
+                                { "field": "reason", "value": "Accident claim is within auto-approval amount." }
+                              ]
+                            }
+                          },
+                          {
+                            "label": "AMOUNT_GT_50000",
+                            "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 50000 },
+                            "child": {
+                              "nodeId": "N08",
+                              "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                              "branches": [
+                                {
+                                  "label": "AMOUNT_LE_300000",
+                                  "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                                  "child": {
+                                    "nodeId": "N09",
+                                    "results": [
+                                      { "field": "decision", "value": "MANUAL_REVIEW" },
+                                      { "field": "reason", "value": "Accident claim requires manual review." }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "label": "AMOUNT_GT_300000",
+                                  "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 300000 },
+                                  "child": {
+                                    "nodeId": "N10",
+                                    "results": [
+                                      { "field": "decision", "value": "COMMITTEE_REVIEW" },
+                                      { "field": "reason", "value": "Large accident claim requires committee review." }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "label": "ILLNESS",
+                "condition": { "field": "incidentType", "operator": "equals", "value": "ILLNESS" },
+                "child": {
+                  "nodeId": "N11",
+                  "condition": { "field": "exceededWaitingPeriod", "operator": "equals", "value": false },
+                  "branches": [
+                    {
+                      "label": "WAITING_PERIOD_NOT_MET",
+                      "condition": { "field": "exceededWaitingPeriod", "operator": "equals", "value": false },
+                      "child": {
+                        "nodeId": "N12",
+                        "results": [
+                          { "field": "decision", "value": "REJECT" },
+                          { "field": "reason", "value": "Illness claim is still within waiting period." }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "WAITING_PERIOD_MET",
+                      "condition": { "field": "exceededWaitingPeriod", "operator": "equals", "value": true },
+                      "child": {
+                        "nodeId": "N13",
+                        "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                        "branches": [
+                          {
+                            "label": "AMOUNT_LE_50000",
+                            "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                            "child": {
+                              "nodeId": "N14",
+                              "results": [
+                                { "field": "decision", "value": "APPROVE" },
+                                { "field": "reason", "value": "Illness claim is within auto-approval amount." }
+                              ]
+                            }
+                          },
+                          {
+                            "label": "AMOUNT_GT_50000",
+                            "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 50000 },
+                            "child": {
+                              "nodeId": "N15",
+                              "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                              "branches": [
+                                {
+                                  "label": "AMOUNT_LE_300000",
+                                  "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                                  "child": {
+                                    "nodeId": "N16",
+                                    "results": [
+                                      { "field": "decision", "value": "MANUAL_REVIEW" },
+                                      { "field": "reason", "value": "Illness claim requires manual review." }
+                                    ]
+                                  }
+                                },
+                                {
+                                  "label": "AMOUNT_GT_300000",
+                                  "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 300000 },
+                                  "child": {
+                                    "nodeId": "N17",
+                                    "results": [
+                                      { "field": "decision", "value": "COMMITTEE_REVIEW" },
+                                      { "field": "reason", "value": "Large illness claim requires committee review." }
+                                    ]
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "label": "NATURAL_DEATH",
+                "condition": { "field": "incidentType", "operator": "equals", "value": "NATURAL_DEATH" },
+                "child": {
+                  "nodeId": "N18",
+                  "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                  "branches": [
+                    {
+                      "label": "AMOUNT_LE_50000",
+                      "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 50000 },
+                      "child": {
+                        "nodeId": "N19",
+                        "results": [
+                          { "field": "decision", "value": "APPROVE" },
+                          { "field": "reason", "value": "Natural death claim is within auto-approval amount." }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "AMOUNT_GT_50000",
+                      "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 50000 },
+                      "child": {
+                        "nodeId": "N20",
+                        "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                        "branches": [
+                          {
+                            "label": "AMOUNT_LE_300000",
+                            "condition": { "field": "claimAmount", "operator": "lessThanOrEqual", "value": 300000 },
+                            "child": {
+                              "nodeId": "N21",
+                              "results": [
+                                { "field": "decision", "value": "MANUAL_REVIEW" },
+                                { "field": "reason", "value": "Natural death claim requires manual review." }
+                              ]
+                            }
+                          },
+                          {
+                            "label": "AMOUNT_GT_300000",
+                            "condition": { "field": "claimAmount", "operator": "greaterThan", "value": 300000 },
+                            "child": {
+                              "nodeId": "N22",
+                              "results": [
+                                { "field": "decision", "value": "COMMITTEE_REVIEW" },
+                                { "field": "reason", "value": "Large natural death claim requires committee review." }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "BOOLEAN 欄位使用了 greaterThan operator",
+  "rule": {
+    "inputs": [
+      { "name": "is_vip", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "is_vip", "operator": "greaterThan", "value": 0 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "VIP" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "results": [
+          { "field": "decision", "value": "Normal" }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "保費費率決策樹：根據投保年齡區間、吸菸狀態、BMI區間、職業風險等級進行分層判斷。年齡區間與職業風險使用 N-ary 多分支，BMI 使用三分支。",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.1.0",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 12,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "inputs": [
+      { "name": "age_range", "typeRef": "ENUM", "allowedValues": ["20-29", "30-39", "40-49", "50-59"] },
+      { "name": "is_smoker", "typeRef": "BOOLEAN" },
+      { "name": "bmi_category", "typeRef": "ENUM", "allowedValues": ["normal", "overweight", "obese"] },
+      { "name": "occupation_risk", "typeRef": "ENUM", "allowedValues": ["low", "medium", "high"] }
+    ],
+    "outputs": [
+      { "name": "rate_level", "typeRef": "ENUM", "allowedValues": ["standard", "surcharge_10", "surcharge_25", "surcharge_50", "reject"] },
+      { "name": "surcharge_pct", "typeRef": "INTEGER" },
+      { "name": "reason", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "branches": [
+        {
+          "label": "high",
+          "condition": { "field": "occupation_risk", "operator": "equals", "value": "high" },
+          "child": {
+            "nodeId": "N02",
+            "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+            "branches": [
+              {
+                "label": "TRUE",
+                "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+                "child": {
+                  "nodeId": "N03",
+                  "results": [
+                    { "field": "rate_level", "value": "reject" },
+                    { "field": "surcharge_pct", "value": 0 },
+                    { "field": "reason", "value": "高風險職業且吸菸，拒保" }
+                  ]
+                }
+              },
+              {
+                "label": "FALSE",
+                "condition": { "field": "is_smoker", "operator": "notEquals", "value": true },
+                "child": {
+                  "nodeId": "N04",
+                  "results": [
+                    { "field": "rate_level", "value": "surcharge_50" },
+                    { "field": "surcharge_pct", "value": 50 },
+                    { "field": "reason", "value": "高風險職業，加費50%" }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "medium",
+          "condition": { "field": "occupation_risk", "operator": "equals", "value": "medium" },
+          "child": {
+            "nodeId": "N05",
+            "branches": [
+              {
+                "label": "obese",
+                "condition": { "field": "bmi_category", "operator": "equals", "value": "obese" },
+                "child": {
+                  "nodeId": "N06",
+                  "results": [
+                    { "field": "rate_level", "value": "surcharge_50" },
+                    { "field": "surcharge_pct", "value": 50 },
+                    { "field": "reason", "value": "中風險職業且肥胖，加費50%" }
+                  ]
+                }
+              },
+              {
+                "label": "overweight",
+                "condition": { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+                "child": {
+                  "nodeId": "N07",
+                  "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+                  "branches": [
+                    {
+                      "label": "TRUE",
+                      "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+                      "child": {
+                        "nodeId": "N08",
+                        "results": [
+                          { "field": "rate_level", "value": "surcharge_25" },
+                          { "field": "surcharge_pct", "value": 25 },
+                          { "field": "reason", "value": "中風險職業、過重且吸菸，加費25%" }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "FALSE",
+                      "condition": { "field": "is_smoker", "operator": "notEquals", "value": true },
+                      "child": {
+                        "nodeId": "N09",
+                        "results": [
+                          { "field": "rate_level", "value": "surcharge_10" },
+                          { "field": "surcharge_pct", "value": 10 },
+                          { "field": "reason", "value": "中風險職業且過重，加費10%" }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "label": "normal",
+                "condition": { "field": "bmi_category", "operator": "equals", "value": "normal" },
+                "child": {
+                  "nodeId": "N10",
+                  "results": [
+                    { "field": "rate_level", "value": "surcharge_10" },
+                    { "field": "surcharge_pct", "value": 10 },
+                    { "field": "reason", "value": "中風險職業、BMI正常，加費10%" }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "label": "low",
+          "condition": { "field": "occupation_risk", "operator": "equals", "value": "low" },
+          "child": {
+            "nodeId": "N11",
+            "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+            "branches": [
+              {
+                "label": "TRUE",
+                "condition": { "field": "is_smoker", "operator": "equals", "value": true },
+                "child": {
+                  "nodeId": "N12",
+                  "branches": [
+                    {
+                      "label": "obese",
+                      "condition": { "field": "bmi_category", "operator": "equals", "value": "obese" },
+                      "child": {
+                        "nodeId": "N13",
+                        "results": [
+                          { "field": "rate_level", "value": "surcharge_25" },
+                          { "field": "surcharge_pct", "value": 25 },
+                          { "field": "reason", "value": "吸菸且肥胖，加費25%" }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "overweight",
+                      "condition": { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+                      "child": {
+                        "nodeId": "N14",
+                        "results": [
+                          { "field": "rate_level", "value": "surcharge_10" },
+                          { "field": "surcharge_pct", "value": 10 },
+                          { "field": "reason", "value": "吸菸且過重，加費10%" }
+                        ]
+                      }
+                    },
+                    {
+                      "label": "normal",
+                      "condition": { "field": "bmi_category", "operator": "equals", "value": "normal" },
+                      "child": {
+                        "nodeId": "N15",
+                        "results": [
+                          { "field": "rate_level", "value": "surcharge_10" },
+                          { "field": "surcharge_pct", "value": 10 },
+                          { "field": "reason", "value": "吸菸，加費10%" }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "label": "FALSE",
+                "condition": { "field": "is_smoker", "operator": "notEquals", "value": true },
+                "child": {
+                  "nodeId": "N16",
+                  "results": [
+                    { "field": "rate_level", "value": "standard" },
+                    { "field": "surcharge_pct", "value": 0 },
+                    { "field": "reason", "value": "低風險職業、不吸菸，標準費率" }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

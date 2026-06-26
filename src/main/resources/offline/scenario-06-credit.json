@@ -1,0 +1,262 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為信用風險評估決策表，包含 3 個條件欄位（credit_score 信用評分、annual_income 年收入、employment_years 工作年資）與 3 個結果欄位（risk_level 風險等級、credit_limit 授信額度、review_required 是否需人工審查）。條件組合共 3×3×2 = 18 種場景，採用 FIRST 策略，因為每位申請人只應歸類到一個風險等級。高信用分+高收入+穩定工作者可獲最高額度，反之降低額度或拒絕。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 18,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "credit_score", "typeRef": "INTEGER" },
+      { "name": "annual_income", "typeRef": "INTEGER" },
+      { "name": "employment_years", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "risk_level", "typeRef": "ENUM", "allowedValues": ["低風險", "中風險", "高風險"] },
+      { "name": "credit_limit", "typeRef": "INTEGER" },
+      { "name": "review_required", "typeRef": "BOOLEAN" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "低風險" },
+          { "field": "credit_limit", "value": 500000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "低風險" },
+          { "field": "credit_limit", "value": 300000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "低風險" },
+          { "field": "credit_limit", "value": 300000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 200000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 150000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "credit_score", "operator": "greaterThanOrEqual", "value": 750 },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 100000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 200000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 150000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 150000 },
+          { "field": "review_required", "value": false }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 100000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R11", "priority": 11,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 50000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R12", "priority": 12,
+        "conditions": [
+          { "field": "credit_score", "operator": "between", "value": [600, 749] },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 30000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R13", "priority": 13,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "中風險" },
+          { "field": "credit_limit", "value": 100000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R14", "priority": 14,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 1000000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 50000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R15", "priority": 15,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 50000 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R16", "priority": 16,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "between", "value": [500000, 999999] },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 0 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R17", "priority": 17,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "greaterThanOrEqual", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 0 },
+          { "field": "review_required", "value": true }
+        ]
+      },
+      {
+        "ruleId": "R18", "priority": 18,
+        "conditions": [
+          { "field": "credit_score", "operator": "lessThan", "value": 600 },
+          { "field": "annual_income", "operator": "lessThan", "value": 500000 },
+          { "field": "employment_years", "operator": "lessThan", "value": 3 }
+        ],
+        "results": [
+          { "field": "risk_level", "value": "高風險" },
+          { "field": "credit_limit", "value": 0 },
+          { "field": "review_required", "value": true }
+        ]
+      }
+    ]
+  }
+}

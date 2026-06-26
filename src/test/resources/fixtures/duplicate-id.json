@@ -1,0 +1,35 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：ruleId 重複",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 35] }
+        ],
+        "results": [
+          { "field": "decision", "value": "青年" }
+        ]
+      },
+      {
+        "ruleId": "R01",
+        "priority": 2,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [36, 65] }
+        ],
+        "results": [
+          { "field": "decision", "value": "壯年" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,285 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "壽險核保決策表：根據被保人年齡區間、性別、三項病史（高血壓/糖尿病/心臟病）判斷核保決議、保費係數與備註。條件組合採 FIRST 策略，優先匹配高風險組合。",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.1.0",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 20,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age_group", "typeRef": "ENUM", "allowedValues": ["18-35", "36-50", "51-65", "66+"] },
+      { "name": "gender", "typeRef": "ENUM", "allowedValues": ["male", "female"] },
+      { "name": "hypertension", "typeRef": "BOOLEAN" },
+      { "name": "diabetes", "typeRef": "BOOLEAN" },
+      { "name": "heart_disease", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "人工評估", "拒保"] },
+      { "name": "premium_factor", "typeRef": "DECIMAL" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "66+" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "拒保" },
+          { "field": "premium_factor", "value": 0.0 },
+          { "field": "remark", "value": "66歲以上且有心臟病史，風險過高拒保" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "51-65" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "拒保" },
+          { "field": "premium_factor", "value": 0.0 },
+          { "field": "remark", "value": "51-65歲且有心臟病史，風險過高拒保" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "66+" },
+          { "field": "gender", "operator": "equals", "value": "male" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 2.2 },
+          { "field": "remark", "value": "66歲以上男性，年齡風險加費120%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "66+" },
+          { "field": "gender", "operator": "equals", "value": "female" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 2.0 },
+          { "field": "remark", "value": "66歲以上女性，年齡風險加費100%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "51-65" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": true },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 2.0 },
+          { "field": "remark", "value": "51-65歲合併高血壓，加費100%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "51-65" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": true },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 1.8 },
+          { "field": "remark", "value": "51-65歲合併糖尿病，加費80%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "51-65" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": false },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.5 },
+          { "field": "remark", "value": "51-65歲無重大病史，年齡加費50%" }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "36-50" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 1.8 },
+          { "field": "remark", "value": "36-50歲有心臟病史，加費80%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "36-50" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": true },
+          { "field": "diabetes", "operator": "equals", "value": true },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 1.7 },
+          { "field": "remark", "value": "36-50歲高血壓合併糖尿病，加費70%並需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "36-50" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": true },
+          { "field": "diabetes", "operator": "equals", "value": false },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.3 },
+          { "field": "remark", "value": "36-50歲僅高血壓，加費30%" }
+        ]
+      },
+      {
+        "ruleId": "R11", "priority": 11,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "36-50" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": true },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.2 },
+          { "field": "remark", "value": "36-50歲僅糖尿病，加費20%" }
+        ]
+      },
+      {
+        "ruleId": "R12", "priority": 12,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "36-50" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": false },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.1 },
+          { "field": "remark", "value": "36-50歲無重大病史，年齡加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R13", "priority": 13,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "18-35" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "anything" },
+          { "field": "diabetes", "operator": "anything" },
+          { "field": "heart_disease", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_factor", "value": 1.5 },
+          { "field": "remark", "value": "18-35歲有心臟病史，需人工評估" }
+        ]
+      },
+      {
+        "ruleId": "R14", "priority": 14,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "18-35" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": true },
+          { "field": "diabetes", "operator": "equals", "value": true },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.3 },
+          { "field": "remark", "value": "18-35歲高血壓合併糖尿病，加費30%" }
+        ]
+      },
+      {
+        "ruleId": "R15", "priority": 15,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "18-35" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": true },
+          { "field": "diabetes", "operator": "equals", "value": false },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.1 },
+          { "field": "remark", "value": "18-35歲僅高血壓，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R16", "priority": 16,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "18-35" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": true },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.2 },
+          { "field": "remark", "value": "18-35歲僅糖尿病，加費20%" }
+        ]
+      },
+      {
+        "ruleId": "R17", "priority": 17,
+        "conditions": [
+          { "field": "age_group", "operator": "equals", "value": "18-35" },
+          { "field": "gender", "operator": "anything" },
+          { "field": "hypertension", "operator": "equals", "value": false },
+          { "field": "diabetes", "operator": "equals", "value": false },
+          { "field": "heart_disease", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_factor", "value": 1.0 },
+          { "field": "remark", "value": "18-35歲無任何病史，標準承保" }
+        ]
+      }
+    ]
+  }
+}

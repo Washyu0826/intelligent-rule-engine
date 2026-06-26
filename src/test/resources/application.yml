@@ -1,0 +1,22 @@
+# Test profile - disable MCP transport, only test service logic
+spring:
+  ai:
+    mcp:
+      server:
+        enabled: false
+  main:
+    web-application-type: servlet
+
+rules:
+  schema-version: "1.0.0"
+  prompt-version: "p1.0.0"
+  validation:
+    max-tree-depth: 10
+    max-table-rows: 200
+    max-columns: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

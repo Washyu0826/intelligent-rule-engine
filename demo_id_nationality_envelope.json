@@ -1,0 +1,116 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "業務情境 1：身分證／居留證號格式必須與國籍別匹配。被保人與要保人各四種組合，採 MULTI hit policy 同時回報多重錯誤。",
+  "schemaVersion": "3.0",
+  "promptVersion": "p3.12-demo-id-nationality",
+  "audit": {
+    "createdBy": "rules-mcp-server@group",
+    "createdAt": "2026-05-08",
+    "operation": "CREATE",
+    "effectiveDate": "2026-06-01",
+    "businessOwner": "uw-lead@group.com.tw",
+    "businessDomain": "核保前端檢核 — ID 與國籍交叉檢核"
+  },
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "MULTI"
+  },
+  "rule": {
+    "hitPolicy": "MULTI",
+    "inputs": [
+      {
+        "name": "insuredIdFormat",
+        "typeRef": "ENUM",
+        "allowedValues": ["TW_ID", "OTHER"],
+        "fieldCode": "INSURED_ID_FORMAT",
+        "nullable": false,
+        "externalCodes": { "TW_ID": "01", "OTHER": "02" }
+      },
+      {
+        "name": "insuredNationality",
+        "typeRef": "ENUM",
+        "allowedValues": ["TW", "OTHER"],
+        "fieldCode": "INSURED_NATIONALITY",
+        "nullable": false,
+        "externalCodes": { "TW": "158", "OTHER": "999" }
+      },
+      {
+        "name": "applicantIdFormat",
+        "typeRef": "ENUM",
+        "allowedValues": ["TW_ID", "OTHER"],
+        "fieldCode": "APPLICANT_ID_FORMAT",
+        "nullable": false,
+        "externalCodes": { "TW_ID": "01", "OTHER": "02" }
+      },
+      {
+        "name": "applicantNationality",
+        "typeRef": "ENUM",
+        "allowedValues": ["TW", "OTHER"],
+        "fieldCode": "APPLICANT_NATIONALITY",
+        "nullable": false,
+        "externalCodes": { "TW": "158", "OTHER": "999" }
+      }
+    ],
+    "outputs": [
+      { "name": "errorCode", "typeRef": "STRING" },
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "insuredIdFormat", "operator": "equals", "value": "TW_ID" },
+          { "field": "insuredNationality", "operator": "notEquals", "value": "TW" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "1.1" },
+          { "field": "errorMessage", "value": "被保人身分證號格式須對應國籍 TW" }
+        ],
+        "rationale": "身分證號格式僅本國人使用；國籍非 TW 屬不一致。"
+      },
+      {
+        "ruleId": "R02",
+        "priority": 2,
+        "conditions": [
+          { "field": "insuredIdFormat", "operator": "notEquals", "value": "TW_ID" },
+          { "field": "insuredNationality", "operator": "equals", "value": "TW" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "1.2" },
+          { "field": "errorMessage", "value": "被保人非身分證號格式不可搭配國籍 TW" }
+        ],
+        "rationale": "本國人應採身分證號；採其他證號格式時國籍應為非 TW。"
+      },
+      {
+        "ruleId": "R03",
+        "priority": 3,
+        "conditions": [
+          { "field": "applicantIdFormat", "operator": "equals", "value": "TW_ID" },
+          { "field": "applicantNationality", "operator": "notEquals", "value": "TW" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "1.3" },
+          { "field": "errorMessage", "value": "要保人身分證號格式須對應國籍 TW" }
+        ],
+        "rationale": "與 R01 相同邏輯，套用要保人。"
+      },
+      {
+        "ruleId": "R04",
+        "priority": 4,
+        "conditions": [
+          { "field": "applicantIdFormat", "operator": "notEquals", "value": "TW_ID" },
+          { "field": "applicantNationality", "operator": "equals", "value": "TW" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "1.4" },
+          { "field": "errorMessage", "value": "要保人非身分證號格式不可搭配國籍 TW" }
+        ],
+        "rationale": "與 R02 相同邏輯，套用要保人。"
+      }
+    ]
+  }
+}

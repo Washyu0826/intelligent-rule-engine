@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：BOOLEAN typeRef 但 value 不是 true/false",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "hypertension", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "hypertension", "operator": "equals", "value": "yes" }
+        ],
+        "results": [
+          { "field": "decision", "value": "拒保" }
+        ]
+      }
+    ]
+  }
+}

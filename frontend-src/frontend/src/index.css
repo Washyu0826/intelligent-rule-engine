@@ -1,0 +1,211 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* 金控集團 / 集團產險 Brand Typography — 中文 Noto Sans TC + 英數 Inter */
+  --font-sans: "Noto Sans TC", "Inter", system-ui, -apple-system, "Segoe UI", "Microsoft JhengHei", sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+
+  /* ─────────────────────────────────────────────────────────
+   * 品牌綠（Group Green）色階 — 取自金控集團品牌識別
+   * 主色：深穩綠 #006341（保單 / header 主色）
+   * ─────────────────────────────────────────────────────────*/
+  --color-group-green-50:  #E8F5EE;
+  --color-group-green-100: #C8E6D4;
+  --color-group-green-200: #9FD3B3;
+  --color-group-green-300: #66BE8B;
+  --color-group-green-400: #34A467;
+  --color-group-green-500: #00894A;
+  --color-group-green-600: #006D3B;  /* 主色 — brand primary */
+  --color-group-green-700: #005530;  /* header 深底 */
+  --color-group-green-800: #00421F;
+  --color-group-green-900: #002F16;
+
+  /* 品牌金 — 搭配綠色的點綴色，常見於保單印刷燙金 */
+  --color-group-gold: #C9A961;
+  --color-group-gold-dim: #A88A4E;
+
+  /* ─────────────────────────────────────────────────────────
+   * Dark theme — 深綠墨色（非冷藍），帶一絲品牌綠底蘊
+   * ─────────────────────────────────────────────────────────*/
+  --color-surface-0: #0A1511;      /* 深綠墨黑 */
+  --color-surface-1: #0F1D18;
+  --color-surface-2: #162822;
+  --color-surface-3: #1E342C;
+  --color-surface-4: #284238;
+
+  /* Accent = Group Green 400（dark mode 亮度調高以對比深底） */
+  --color-accent: #34A467;
+  --color-accent-dim: #00894A;
+  --color-accent-muted: rgba(52, 164, 103, 0.12);
+
+  /* Group Gold 作為 secondary accent */
+  --color-brand-gold: #C9A961;
+
+  --color-text-primary: #E8EFEB;
+  --color-text-secondary: #8FA69B;
+  --color-text-tertiary: #5C7368;
+
+  --color-border: #243A31;
+  --color-border-hover: #355044;
+
+  --color-danger: #D94F46;
+  --color-warning: #D9A443;
+  --color-success: #34A467;       /* 跟主色同色系 — 合規 / 成功 */
+
+  /* ─────────────────────────────────────────────────────────
+   * Light theme — 暖米白（非冷灰），呈現保單紙質感
+   * ─────────────────────────────────────────────────────────*/
+  --color-light-surface-0: #FAFBF7;  /* 暖米白（近保單紙色） */
+  --color-light-surface-1: #F4F6F1;
+  --color-light-surface-2: #EBEFE9;
+  --color-light-surface-3: #DDE4DD;
+  --color-light-surface-4: #C8D1C9;
+  --color-light-text-primary: #0F2319;     /* 深墨綠 */
+  --color-light-text-secondary: #3D5549;
+  --color-light-text-tertiary: #748478;
+  --color-light-border: #DDE4DD;
+  --color-light-border-hover: #C5D0C7;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  margin: 0;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  letter-spacing: -0.005em;
+}
+
+/* Dark (default) */
+.dark body,
+body {
+  background-color: var(--color-surface-0);
+  color: var(--color-text-primary);
+}
+
+/* Light */
+.light body {
+  background-color: var(--color-light-surface-0);
+  color: var(--color-light-text-primary);
+}
+
+/* Scrollbar styling for dark mode */
+.dark ::-webkit-scrollbar { width: 6px; }
+.dark ::-webkit-scrollbar-track { background: var(--color-surface-1); }
+.dark ::-webkit-scrollbar-thumb { background: var(--color-surface-4); border-radius: 3px; }
+
+/* 品牌綠 header 專用 gradient（提高品牌辨識度） */
+.group-header-bg {
+  background: linear-gradient(180deg, var(--color-group-green-700) 0%, var(--color-group-green-600) 100%);
+}
+.group-header-bg-light {
+  background: linear-gradient(180deg, var(--color-group-green-600) 0%, var(--color-group-green-500) 100%);
+}
+
+/* Glow keyframes */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* 大樹圖示柔和呼吸 — Group 品牌象徵「呵護家園」 */
+@keyframes gentle-sway {
+  0%, 100% { transform: rotate(-1deg); }
+  50% { transform: rotate(1deg); }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 1.5s linear infinite; }
+.animate-fade-in-up { animation: fade-in-up 0.3s ease-out forwards; }
+.animate-gentle-sway { animation: gentle-sway 5s ease-in-out infinite; transform-origin: bottom center; }
+
+/* ── 列印報告樣式（保留品牌綠品牌色，避免全黑白沒質感）── */
+@media print {
+  html, body {
+    background: white !important;
+    color: #1a1a1a !important;
+    font-size: 11px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  header, footer, .print\:hidden { display: none !important; }
+
+  /* 報告標題保留品牌綠 */
+  h1, h2 {
+    color: #006D3B !important;
+  }
+
+  /* 表格樣式：表頭淺米白底、深綠字 */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    page-break-inside: auto;
+  }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th {
+    background: #F4F6F1 !important;
+    color: #006D3B !important;
+    font-weight: 600;
+    border-bottom: 2px solid #006D3B !important;
+    padding: 6px 10px;
+    text-align: left;
+  }
+  td {
+    border-bottom: 1px solid #DDE4DD !important;
+    padding: 5px 10px;
+    color: #1a1a1a !important;
+  }
+
+  /* 卡片邊框淺色，移除陰影 */
+  .rounded-xl, .rounded-2xl, .rounded-lg {
+    border-radius: 4px;
+    box-shadow: none !important;
+    border-color: #DDE4DD !important;
+  }
+
+  /* 預設背景轉白，避免 dark 模式文字看不到 */
+  [class*="bg-surface-"], [class*="bg-light-surface-"] {
+    background: white !important;
+  }
+
+  /* 強調元件保留色彩 */
+  .text-success, .text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700 {
+    color: #006D3B !important;
+  }
+  .text-danger, .text-red-400, .text-red-500, .text-red-600, .text-red-700 {
+    color: #B23A2B !important;
+  }
+  .text-warning, .text-amber-400, .text-amber-500, .text-amber-600, .text-amber-700 {
+    color: #A88A4E !important;
+  }
+
+  /* 重置 framer-motion 殘留 transform / opacity，避免列印時動畫凍結中間態 */
+  * {
+    transform: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  @page { margin: 18mm 15mm; size: A4 portrait; }
+}

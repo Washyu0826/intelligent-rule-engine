@@ -1,0 +1,26 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：condition 引用了不存在的 input 欄位",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 65] },
+          { "field": "bmi", "operator": "between", "value": [18.5, 24.0] }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    ]
+  }
+}

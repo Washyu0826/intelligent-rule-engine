@@ -1,0 +1,102 @@
+# Frontend SPA — 由 NGINX 容器服務靜態資產（Vite build 產物）
+# 假設 image 內 /usr/share/nginx/html 已包含 index.html + assets。
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rules-mcp-frontend
+  namespace: rules-mcp
+  labels:
+    app: rules-mcp
+    component: frontend
+    version: "3.13.0"
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: rules-mcp
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: rules-mcp
+        component: frontend
+        version: "3.13.0"
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101                 # nginx-unprivileged image 預設
+        runAsGroup: 101
+        fsGroup: 101
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: topology.kubernetes.io/zone
+                labelSelector:
+                  matchLabels:
+                    app: rules-mcp
+                    component: frontend
+      containers:
+        - name: frontend
+          image: ACCOUNT_ID.dkr.ecr.ap-east-2.amazonaws.com/rules-mcp-frontend@sha256:REPLACE_ME
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-run
+              mountPath: /var/run
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: nginx-cache
+          emptyDir:
+            sizeLimit: 50Mi
+        - name: nginx-run
+          emptyDir:
+            sizeLimit: 10Mi

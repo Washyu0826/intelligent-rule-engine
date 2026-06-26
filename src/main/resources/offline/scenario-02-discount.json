@@ -1,0 +1,243 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為電商折扣促銷決策表，包含 3 個條件欄位（member_level 會員等級、order_amount 訂單金額、is_holiday 是否假日）與 2 個結果欄位（discount_rate 折扣率、promotion_label 促銷標籤）。條件組合共 3×3×2 = 18 種場景，採用 FIRST 策略，每筆訂單只適用一種折扣方案。高等級會員享更高折扣，假日再加碼。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 18,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "member_level", "typeRef": "ENUM", "allowedValues": ["一般", "VIP", "VVIP"] },
+      { "name": "order_amount", "typeRef": "INTEGER" },
+      { "name": "is_holiday", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "discount_rate", "typeRef": "DECIMAL" },
+      { "name": "promotion_label", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.0 },
+          { "field": "promotion_label", "value": "無折扣" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.03 },
+          { "field": "promotion_label", "value": "假日小確幸3%" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.05 },
+          { "field": "promotion_label", "value": "滿500折5%" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.08 },
+          { "field": "promotion_label", "value": "假日滿額折8%" }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.08 },
+          { "field": "promotion_label", "value": "滿2000折8%" }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "一般" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.10 },
+          { "field": "promotion_label", "value": "假日大額折10%" }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.05 },
+          { "field": "promotion_label", "value": "VIP基礎折5%" }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.08 },
+          { "field": "promotion_label", "value": "VIP假日折8%" }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.10 },
+          { "field": "promotion_label", "value": "VIP滿額折10%" }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.12 },
+          { "field": "promotion_label", "value": "VIP假日滿額折12%" }
+        ]
+      },
+      {
+        "ruleId": "R11", "priority": 11,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.12 },
+          { "field": "promotion_label", "value": "VIP大額折12%" }
+        ]
+      },
+      {
+        "ruleId": "R12", "priority": 12,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VIP" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.15 },
+          { "field": "promotion_label", "value": "VIP假日大額折15%" }
+        ]
+      },
+      {
+        "ruleId": "R13", "priority": 13,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.10 },
+          { "field": "promotion_label", "value": "VVIP基礎折10%" }
+        ]
+      },
+      {
+        "ruleId": "R14", "priority": 14,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "lessThan", "value": 500 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.12 },
+          { "field": "promotion_label", "value": "VVIP假日折12%" }
+        ]
+      },
+      {
+        "ruleId": "R15", "priority": 15,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.15 },
+          { "field": "promotion_label", "value": "VVIP滿額折15%" }
+        ]
+      },
+      {
+        "ruleId": "R16", "priority": 16,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "between", "value": [500, 2000] },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.18 },
+          { "field": "promotion_label", "value": "VVIP假日滿額折18%" }
+        ]
+      },
+      {
+        "ruleId": "R17", "priority": 17,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.18 },
+          { "field": "promotion_label", "value": "VVIP大額折18%" }
+        ]
+      },
+      {
+        "ruleId": "R18", "priority": 18,
+        "conditions": [
+          { "field": "member_level", "operator": "equals", "value": "VVIP" },
+          { "field": "order_amount", "operator": "greaterThan", "value": 2000 },
+          { "field": "is_holiday", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount_rate", "value": 0.20 },
+          { "field": "promotion_label", "value": "VVIP假日大額折20%" }
+        ]
+      }
+    ]
+  }
+}

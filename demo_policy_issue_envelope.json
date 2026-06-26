@@ -1,0 +1,162 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "業務情境 2：保單核保前置檢核 — 通路、授權書、繳費方式、投保始期跨欄位日期比較。採 MULTI hit policy 一次回報所有違規。展示 v3.12 valueRef 跨欄位 / 相對日期能力。",
+  "schemaVersion": "3.0",
+  "promptVersion": "p3.12-demo-policy-issue",
+  "audit": {
+    "createdBy": "rules-mcp-server@group",
+    "createdAt": "2026-05-08",
+    "operation": "CREATE",
+    "effectiveDate": "2026-06-01",
+    "businessOwner": "uw-lead@group.com.tw",
+    "businessDomain": "核保前端檢核 — 通路 / 授權書 / 繳費 / 投保始期"
+  },
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 7,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "MULTI"
+  },
+  "rule": {
+    "hitPolicy": "MULTI",
+    "inputs": [
+      {
+        "name": "channel",
+        "typeRef": "ENUM",
+        "allowedValues": ["DIRECT", "AGENT", "BANK"],
+        "fieldCode": "POLICY_CHANNEL",
+        "nullable": false,
+        "externalCodes": { "DIRECT": "10", "AGENT": "20", "BANK": "30" }
+      },
+      {
+        "name": "authorizationDoc",
+        "typeRef": "BOOLEAN",
+        "fieldCode": "AUTH_DOC_PROVIDED",
+        "nullable": false
+      },
+      {
+        "name": "paymentMethod",
+        "typeRef": "ENUM",
+        "allowedValues": ["CASH", "CREDIT_CARD", "BANK_TRANSFER"],
+        "fieldCode": "PAYMENT_METHOD",
+        "nullable": false,
+        "externalCodes": { "CASH": "01", "CREDIT_CARD": "02", "BANK_TRANSFER": "03" }
+      },
+      {
+        "name": "applicantIsCardHolder",
+        "typeRef": "BOOLEAN",
+        "fieldCode": "APPLICANT_IS_HOLDER",
+        "nullable": false
+      },
+      {
+        "name": "policyStartDate",
+        "typeRef": "DATE",
+        "fieldCode": "POLICY_START_DT",
+        "nullable": false,
+        "allowedValues": ["2026-05-07", "2026-05-08", "2026-05-09", "2026-05-15"]
+      },
+      {
+        "name": "birthday",
+        "typeRef": "DATE",
+        "fieldCode": "INSURED_BIRTH_DT",
+        "nullable": false,
+        "allowedValues": ["1990-06-15", "2000-06-15", "2026-12-31"]
+      }
+    ],
+    "outputs": [
+      { "name": "errorCode", "typeRef": "STRING" },
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "channel", "operator": "equals", "value": "AGENT" },
+          { "field": "authorizationDoc", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.1" },
+          { "field": "errorMessage", "value": "保代通路須附要保人授權書" }
+        ],
+        "rationale": "保代通路依保險法及核保規範須檢附授權書。"
+      },
+      {
+        "ruleId": "R02",
+        "priority": 2,
+        "conditions": [
+          { "field": "channel", "operator": "equals", "value": "BANK" },
+          { "field": "authorizationDoc", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.2" },
+          { "field": "errorMessage", "value": "銀保通路須附要保人授權書" }
+        ],
+        "rationale": "銀保通路同保代通路，須檢附授權書。"
+      },
+      {
+        "ruleId": "R03",
+        "priority": 3,
+        "conditions": [
+          { "field": "paymentMethod", "operator": "equals", "value": "CREDIT_CARD" },
+          { "field": "applicantIsCardHolder", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.3" },
+          { "field": "errorMessage", "value": "信用卡繳費時要保人須為持卡人" }
+        ],
+        "rationale": "依金管會反洗錢與保費繳付要點，要保人須與卡片持有人一致。"
+      },
+      {
+        "ruleId": "R04",
+        "priority": 4,
+        "conditions": [
+          { "field": "paymentMethod", "operator": "equals", "value": "BANK_TRANSFER" },
+          { "field": "applicantIsCardHolder", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.4" },
+          { "field": "errorMessage", "value": "銀行轉帳繳費時要保人須為帳戶持有人" }
+        ],
+        "rationale": "與 R03 相同精神，套用銀行轉帳。"
+      },
+      {
+        "ruleId": "R05",
+        "priority": 5,
+        "conditions": [
+          { "field": "policyStartDate", "operator": "lessThan", "valueRef": "$today" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.5" },
+          { "field": "errorMessage", "value": "投保始期不得早於今日" }
+        ],
+        "rationale": "保險法第 51 條規定投保始期不得回溯。使用 valueRef=$today 表達相對日期。"
+      },
+      {
+        "ruleId": "R06",
+        "priority": 6,
+        "conditions": [
+          { "field": "policyStartDate", "operator": "greaterThan", "valueRef": "$today+1d" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.6" },
+          { "field": "errorMessage", "value": "投保始期不得晚於隔日" }
+        ],
+        "rationale": "依核保規範，投保始期最晚為隔日。使用 valueRef=$today+1d 表達相對日期偏移。"
+      },
+      {
+        "ruleId": "R07",
+        "priority": 7,
+        "conditions": [
+          { "field": "policyStartDate", "operator": "lessThan", "valueRef": "birthday" }
+        ],
+        "results": [
+          { "field": "errorCode", "value": "2.7" },
+          { "field": "errorMessage", "value": "投保始期不得早於被保人生日" }
+        ],
+        "rationale": "投保始期不得早於被保險人出生日。使用 valueRef 表達跨欄位比較。"
+      }
+    ]
+  }
+}

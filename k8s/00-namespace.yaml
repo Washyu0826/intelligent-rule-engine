@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rules-mcp
+  labels:
+    name: rules-mcp
+    istio-injection: enabled        # 若用 Istio service mesh
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# 基本資源限制（避免單 namespace 燒光 cluster）
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: rules-mcp-quota
+  namespace: rules-mcp
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    persistentvolumeclaims: "5"
+    services.loadbalancers: "2"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: rules-mcp-limits
+  namespace: rules-mcp
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: "1"
+        memory: "1Gi"
+      defaultRequest:
+        cpu: "200m"
+        memory: "256Mi"
+      max:
+        cpu: "4"
+        memory: "4Gi"

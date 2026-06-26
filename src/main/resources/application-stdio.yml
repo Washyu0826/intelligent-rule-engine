@@ -1,0 +1,23 @@
+# STDIO transport 設定（本地開發用）
+# 啟動方式：java -jar rules-mcp-server.jar --spring.profiles.active=stdio
+
+spring:
+  ai:
+    mcp:
+      server:
+        stdio: true
+        name: rules-mcp-server
+        version: 1.0.0
+  main:
+    web-application-type: none  # STDIO 模式不需要 web server
+    banner-mode: off            # STDIO 需要乾淨的 stdout
+
+logging:
+  level:
+    root: WARN
+    com.ruleengine.rules: INFO
+  # STDIO 模式下 log 必須走 stderr，不能汙染 stdout
+  pattern:
+    console: ""
+  file:
+    name: logs/rules-mcp-server.log

@@ -1,0 +1,26 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "V1.1.0 test: input/output name overlap",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "result", "typeRef": "STRING" }
+    ],
+    "outputs": [
+      { "name": "result", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 65] },
+          { "field": "result", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "result", "value": "ok" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "葉節點缺少 results",
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "拒保"] },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "age", "operator": "greaterThan", "value": 60 },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "拒保" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    }
+  }
+}

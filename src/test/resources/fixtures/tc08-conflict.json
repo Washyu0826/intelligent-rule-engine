@@ -1,0 +1,41 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "TC08 測試：故意製造條件重疊衝突",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "hypertension", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "人工評估", "拒保"] },
+      { "name": "premium_rate", "typeRef": "DECIMAL" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 35] },
+          { "field": "hypertension", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "人工評估" },
+          { "field": "premium_rate", "value": 1.3 }
+        ]
+      },
+      {
+        "ruleId": "R02",
+        "priority": 2,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [20, 30] },
+          { "field": "hypertension", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_rate", "value": 1.0 }
+        ]
+      }
+    ]
+  }
+}

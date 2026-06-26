@@ -1,0 +1,191 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "意外險核保決策表：根據年齡資格、職業類別（1-6類）、高風險活動、理賠次數、殘廢等級判斷投保決議、最高承保金額、除外條款與備註。FIRST 策略優先匹配拒保條件。",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.1.0",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 20,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age_eligible", "typeRef": "BOOLEAN" },
+      { "name": "occupation_class", "typeRef": "ENUM", "allowedValues": ["1", "2", "3", "4", "5", "6"] },
+      { "name": "high_risk_activity", "typeRef": "BOOLEAN" },
+      { "name": "claim_count_3yr", "typeRef": "ENUM", "allowedValues": ["0", "1", "2+"] },
+      { "name": "disability_grade", "typeRef": "ENUM", "allowedValues": ["none", "grade_1_6", "grade_7_11"] }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["approved", "exclusion", "surcharge_approved", "rejected"] },
+      { "name": "max_coverage", "typeRef": "ENUM", "allowedValues": ["5000000", "10000000", "20000000", "not_insurable"] },
+      { "name": "exclusion_clause", "typeRef": "STRING" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": false },
+          { "field": "occupation_class", "operator": "anything" },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "decision", "value": "rejected" },
+          { "field": "max_coverage", "value": "not_insurable" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "年齡不在15-70歲之間，不符投保資格" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "equals", "value": "6" },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "decision", "value": "rejected" },
+          { "field": "max_coverage", "value": "not_insurable" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第6類職業（極高風險），拒保" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "in", "value": ["4", "5"] },
+          { "field": "high_risk_activity", "operator": "equals", "value": true },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "decision", "value": "rejected" },
+          { "field": "max_coverage", "value": "not_insurable" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第4-5類職業且從事高風險活動，拒保" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "anything" },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "equals", "value": "grade_1_6" }
+        ],
+        "results": [
+          { "field": "decision", "value": "rejected" },
+          { "field": "max_coverage", "value": "not_insurable" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "重度殘廢（1-6級），拒保" }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "equals", "value": "5" },
+          { "field": "high_risk_activity", "operator": "equals", "value": false },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "in", "value": ["none", "grade_7_11"] }
+        ],
+        "results": [
+          { "field": "decision", "value": "surcharge_approved" },
+          { "field": "max_coverage", "value": "5000000" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第5類職業，加費核准、額度上限500萬" }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "equals", "value": "4" },
+          { "field": "high_risk_activity", "operator": "equals", "value": false },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "in", "value": ["none", "grade_7_11"] }
+        ],
+        "results": [
+          { "field": "decision", "value": "surcharge_approved" },
+          { "field": "max_coverage", "value": "5000000" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第4類職業，加費核准、額度上限500萬" }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "in", "value": ["1", "2", "3"] },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "equals", "value": "grade_7_11" }
+        ],
+        "results": [
+          { "field": "decision", "value": "exclusion" },
+          { "field": "max_coverage", "value": "10000000" },
+          { "field": "exclusion_clause", "value": "除外既有殘廢部位相關之意外事故理賠" },
+          { "field": "remark", "value": "輕度殘廢（7-11級），附除外條款核准" }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "in", "value": ["1", "2"] },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "equals", "value": "2+" },
+          { "field": "disability_grade", "operator": "equals", "value": "none" }
+        ],
+        "results": [
+          { "field": "decision", "value": "surcharge_approved" },
+          { "field": "max_coverage", "value": "10000000" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "理賠2次以上，加費核准、額度降為1000萬" }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "equals", "value": "3" },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "anything" },
+          { "field": "disability_grade", "operator": "equals", "value": "none" }
+        ],
+        "results": [
+          { "field": "decision", "value": "approved" },
+          { "field": "max_coverage", "value": "10000000" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第3類職業、無殘廢，核准最高1000萬" }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "age_eligible", "operator": "equals", "value": true },
+          { "field": "occupation_class", "operator": "in", "value": ["1", "2"] },
+          { "field": "high_risk_activity", "operator": "anything" },
+          { "field": "claim_count_3yr", "operator": "in", "value": ["0", "1"] },
+          { "field": "disability_grade", "operator": "equals", "value": "none" }
+        ],
+        "results": [
+          { "field": "decision", "value": "approved" },
+          { "field": "max_coverage", "value": "20000000" },
+          { "field": "exclusion_clause", "value": "" },
+          { "field": "remark", "value": "第1-2類職業、無殘廢、理賠1次以內，核准最高2000萬" }
+        ]
+      }
+    ]
+  }
+}

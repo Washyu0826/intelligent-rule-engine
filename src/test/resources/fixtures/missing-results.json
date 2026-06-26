@@ -1,0 +1,28 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：規則缺少某個 output 欄位的結果",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" },
+      { "name": "premium_rate", "typeRef": "DECIMAL" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "between", "value": [18, 65] }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" },
+          { "field": "premium_rate", "value": 1.0 }
+        ]
+      }
+    ]
+  }
+}

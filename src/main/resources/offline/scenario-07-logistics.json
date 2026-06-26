@@ -1,0 +1,243 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為物流費率決策表，包含 3 個條件欄位（weight_kg 包裹重量公斤、distance_zone 配送距離區域、is_fragile 是否易碎品）與 2 個結果欄位（shipping_fee 運費金額、delivery_days 預估配送天數）。條件組合共 3×3×2 = 18 種場景，採用 FIRST 策略，因為每筆訂單只對應一組運費和配送時間。重量越重、距離越遠、易碎品費用越高。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 18,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "weight_kg", "typeRef": "DECIMAL" },
+      { "name": "distance_zone", "typeRef": "ENUM", "allowedValues": ["同城", "鄰省", "跨區"] },
+      { "name": "is_fragile", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "shipping_fee", "typeRef": "INTEGER" },
+      { "name": "delivery_days", "typeRef": "INTEGER" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 60 },
+          { "field": "delivery_days", "value": 1 }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 100 },
+          { "field": "delivery_days", "value": 1 }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 100 },
+          { "field": "delivery_days", "value": 2 }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 160 },
+          { "field": "delivery_days", "value": 3 }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 180 },
+          { "field": "delivery_days", "value": 4 }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "weight_kg", "operator": "lessThanOrEqual", "value": 5.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 280 },
+          { "field": "delivery_days", "value": 5 }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 120 },
+          { "field": "delivery_days", "value": 1 }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 200 },
+          { "field": "delivery_days", "value": 2 }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 200 },
+          { "field": "delivery_days", "value": 3 }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 320 },
+          { "field": "delivery_days", "value": 4 }
+        ]
+      },
+      {
+        "ruleId": "R11", "priority": 11,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 350 },
+          { "field": "delivery_days", "value": 5 }
+        ]
+      },
+      {
+        "ruleId": "R12", "priority": 12,
+        "conditions": [
+          { "field": "weight_kg", "operator": "between", "value": [5.01, 20.0] },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 500 },
+          { "field": "delivery_days", "value": 6 }
+        ]
+      },
+      {
+        "ruleId": "R13", "priority": 13,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 250 },
+          { "field": "delivery_days", "value": 2 }
+        ]
+      },
+      {
+        "ruleId": "R14", "priority": 14,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "同城" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 400 },
+          { "field": "delivery_days", "value": 3 }
+        ]
+      },
+      {
+        "ruleId": "R15", "priority": 15,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 400 },
+          { "field": "delivery_days", "value": 4 }
+        ]
+      },
+      {
+        "ruleId": "R16", "priority": 16,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "鄰省" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 600 },
+          { "field": "delivery_days", "value": 5 }
+        ]
+      },
+      {
+        "ruleId": "R17", "priority": 17,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": false }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 600 },
+          { "field": "delivery_days", "value": 6 }
+        ]
+      },
+      {
+        "ruleId": "R18", "priority": 18,
+        "conditions": [
+          { "field": "weight_kg", "operator": "greaterThan", "value": 20.0 },
+          { "field": "distance_zone", "operator": "equals", "value": "跨區" },
+          { "field": "is_fragile", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "shipping_fee", "value": 850 },
+          { "field": "delivery_days", "value": 7 }
+        ]
+      }
+    ]
+  }
+}

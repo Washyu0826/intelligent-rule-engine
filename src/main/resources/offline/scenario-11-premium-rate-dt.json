@@ -1,0 +1,239 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "保費費率決策表：根據投保年齡區間、吸菸狀態、BMI區間、職業風險等級判斷費率等級、加費百分比與原因說明。FIRST 策略優先匹配高風險組合。",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.1.0",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 18,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age_range", "typeRef": "ENUM", "allowedValues": ["20-29", "30-39", "40-49", "50-59"] },
+      { "name": "is_smoker", "typeRef": "BOOLEAN" },
+      { "name": "bmi_category", "typeRef": "ENUM", "allowedValues": ["normal", "overweight", "obese"] },
+      { "name": "occupation_risk", "typeRef": "ENUM", "allowedValues": ["low", "medium", "high"] }
+    ],
+    "outputs": [
+      { "name": "rate_level", "typeRef": "ENUM", "allowedValues": ["standard", "surcharge_10", "surcharge_25", "surcharge_50", "reject"] },
+      { "name": "surcharge_pct", "typeRef": "INTEGER" },
+      { "name": "reason", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "anything" },
+          { "field": "occupation_risk", "operator": "equals", "value": "high" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "reject" },
+          { "field": "surcharge_pct", "value": 0 },
+          { "field": "reason", "value": "高風險職業且吸菸，風險過高拒保" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "anything" },
+          { "field": "bmi_category", "operator": "equals", "value": "obese" },
+          { "field": "occupation_risk", "operator": "equals", "value": "high" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "reject" },
+          { "field": "surcharge_pct", "value": 0 },
+          { "field": "reason", "value": "高風險職業且肥胖，風險過高拒保" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "in", "value": ["normal", "overweight"] },
+          { "field": "occupation_risk", "operator": "equals", "value": "high" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_50" },
+          { "field": "surcharge_pct", "value": 50 },
+          { "field": "reason", "value": "高風險職業，加費50%" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "age_range", "operator": "in", "value": ["50-59"] },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "equals", "value": "obese" },
+          { "field": "occupation_risk", "operator": "equals", "value": "medium" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "reject" },
+          { "field": "surcharge_pct", "value": 0 },
+          { "field": "reason", "value": "50-59歲吸菸且肥胖加上中風險職業，拒保" }
+        ]
+      },
+      {
+        "ruleId": "R05", "priority": 5,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "anything" },
+          { "field": "bmi_category", "operator": "equals", "value": "obese" },
+          { "field": "occupation_risk", "operator": "equals", "value": "medium" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_50" },
+          { "field": "surcharge_pct", "value": 50 },
+          { "field": "reason", "value": "中風險職業且肥胖，加費50%" }
+        ]
+      },
+      {
+        "ruleId": "R06", "priority": 6,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+          { "field": "occupation_risk", "operator": "equals", "value": "medium" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_25" },
+          { "field": "surcharge_pct", "value": 25 },
+          { "field": "reason", "value": "中風險職業、過重且吸菸，加費25%" }
+        ]
+      },
+      {
+        "ruleId": "R07", "priority": 7,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+          { "field": "occupation_risk", "operator": "equals", "value": "medium" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_10" },
+          { "field": "surcharge_pct", "value": 10 },
+          { "field": "reason", "value": "中風險職業且過重，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R08", "priority": 8,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "anything" },
+          { "field": "bmi_category", "operator": "equals", "value": "normal" },
+          { "field": "occupation_risk", "operator": "equals", "value": "medium" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_10" },
+          { "field": "surcharge_pct", "value": 10 },
+          { "field": "reason", "value": "中風險職業，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R09", "priority": 9,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "equals", "value": "obese" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_25" },
+          { "field": "surcharge_pct", "value": 25 },
+          { "field": "reason", "value": "吸菸且肥胖，加費25%" }
+        ]
+      },
+      {
+        "ruleId": "R10", "priority": 10,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_10" },
+          { "field": "surcharge_pct", "value": 10 },
+          { "field": "reason", "value": "吸菸且過重，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R11", "priority": 11,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": true },
+          { "field": "bmi_category", "operator": "equals", "value": "normal" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_10" },
+          { "field": "surcharge_pct", "value": 10 },
+          { "field": "reason", "value": "吸菸，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R12", "priority": 12,
+        "conditions": [
+          { "field": "age_range", "operator": "in", "value": ["50-59"] },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "equals", "value": "obese" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_25" },
+          { "field": "surcharge_pct", "value": 25 },
+          { "field": "reason", "value": "50-59歲肥胖，加費25%" }
+        ]
+      },
+      {
+        "ruleId": "R13", "priority": 13,
+        "conditions": [
+          { "field": "age_range", "operator": "in", "value": ["40-49", "50-59"] },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "equals", "value": "overweight" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "surcharge_10" },
+          { "field": "surcharge_pct", "value": 10 },
+          { "field": "reason", "value": "40歲以上過重，加費10%" }
+        ]
+      },
+      {
+        "ruleId": "R14", "priority": 14,
+        "conditions": [
+          { "field": "age_range", "operator": "anything" },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "equals", "value": "normal" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "standard" },
+          { "field": "surcharge_pct", "value": 0 },
+          { "field": "reason", "value": "低風險職業、不吸菸、BMI正常，標準費率" }
+        ]
+      },
+      {
+        "ruleId": "R15", "priority": 15,
+        "conditions": [
+          { "field": "age_range", "operator": "in", "value": ["20-29", "30-39"] },
+          { "field": "is_smoker", "operator": "equals", "value": false },
+          { "field": "bmi_category", "operator": "anything" },
+          { "field": "occupation_risk", "operator": "equals", "value": "low" }
+        ],
+        "results": [
+          { "field": "rate_level", "value": "standard" },
+          { "field": "surcharge_pct", "value": 0 },
+          { "field": "reason", "value": "年輕且低風險，標準費率" }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "nodeId 重複",
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "拒保"] }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "age", "operator": "greaterThan", "value": 60 },
+      "trueBranch": {
+        "nodeId": "N01",
+        "results": [
+          { "field": "decision", "value": "拒保" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N01",
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# PodDisruptionBudget — voluntary disruption（節點維護、cluster autoscaler、drain）期間
+# 至少要保留 2 個 pod 提供服務。搭配 deployment.maxUnavailable=0 + minReplicas=3 = 永遠 N-1 可用。
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: rules-mcp-backend
+  namespace: rules-mcp
+  labels:
+    app: rules-mcp
+    component: backend
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: rules-mcp
+      component: backend
+  unhealthyPodEvictionPolicy: AlwaysAllow   # k8s ≥ 1.27 — 不健康的 pod 不受 PDB 保護

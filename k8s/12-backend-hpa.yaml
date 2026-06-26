@@ -1,0 +1,62 @@
+# HorizontalPodAutoscaler — 三軸自動伸縮
+#
+# 1) CPU：基本水位指標
+# 2) Memory：避免 G1 GC 壓力下 CPU 假性飆高被誤判
+# 3) Custom metric（Prometheus）：以 RPS / pod 為主，貼近真實業務負載
+#
+# 使用 prometheus-adapter（或 KEDA Prometheus scaler）暴露 custom metric。
+# behavior 段刻意保守 — 金融業避免抖動式縮放，scaleDown 比 scaleUp 慢。
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: rules-mcp-backend
+  namespace: rules-mcp
+  labels:
+    app: rules-mcp
+    component: backend
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: rules-mcp-backend
+  minReplicas: 3            # 跨 AZ 高可用最低門檻
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Pods
+      pods:
+        metric:
+          name: http_server_requests_seconds_count_per_second   # Micrometer 暴露 + adapter 預先計算
+        target:
+          type: AverageValue
+          averageValue: "20"      # 每 pod 目標 20 RPS
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+        - type: Percent
+          value: 100              # 一次最多翻倍
+          periodSeconds: 60
+        - type: Pods
+          value: 4
+          periodSeconds: 60
+      selectPolicy: Max
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 分鐘冷卻 — 避免抖動
+      policies:
+        - type: Percent
+          value: 25
+          periodSeconds: 120
+      selectPolicy: Min

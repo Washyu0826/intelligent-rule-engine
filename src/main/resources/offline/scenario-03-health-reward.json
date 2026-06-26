@@ -1,0 +1,63 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為健康獎勵決策表，包含 3 個條件欄位（exercise_met 運動是否達標、sleep_met 睡眠是否充足、bmi_normal BMI是否正常）與 2 個結果欄位（discount 保費折減率、remark 獎勵說明）。三項健康指標獨立判斷可累加，條件組合共 3 條規則，採用 MULTI 策略，因為同一位被保人可能同時滿足多項健康條件，獎勵應疊加而非只取一條。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 3,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "MULTI"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "MULTI",
+    "inputs": [
+      { "name": "exercise_met", "typeRef": "BOOLEAN" },
+      { "name": "sleep_met", "typeRef": "BOOLEAN" },
+      { "name": "bmi_normal", "typeRef": "BOOLEAN" }
+    ],
+    "outputs": [
+      { "name": "discount", "typeRef": "DECIMAL" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "exercise_met", "operator": "equals", "value": true },
+          { "field": "sleep_met", "operator": "anything" },
+          { "field": "bmi_normal", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "discount", "value": 0.01 },
+          { "field": "remark", "value": "運動達標折減1%" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "exercise_met", "operator": "anything" },
+          { "field": "sleep_met", "operator": "equals", "value": true },
+          { "field": "bmi_normal", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "discount", "value": 0.005 },
+          { "field": "remark", "value": "睡眠充足折減0.5%" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "exercise_met", "operator": "anything" },
+          { "field": "sleep_met", "operator": "anything" },
+          { "field": "bmi_normal", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "discount", "value": 0.003 },
+          { "field": "remark", "value": "BMI正常折減0.3%" }
+        ]
+      }
+    ]
+  }
+}

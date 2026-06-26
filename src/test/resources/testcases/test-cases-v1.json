@@ -1,0 +1,91 @@
+[
+  {
+    "id": "TC01",
+    "category": "正常·FIRST",
+    "ruleType": "DecisionTable",
+    "description": "根據被保人的年齡段（18-35、36-50、51-65、66歲以上）、性別（男/女/任意）、是否患有高血壓（是/否），進行壽險核保風險評估，輸出核保決議（承保/人工評估/拒保）及保費係數。hitPolicy 使用 FIRST，條件為並列比對無先後依賴。",
+    "expectedRuleType": "DecisionTable",
+    "expectedRuleCount": 18,
+    "expectedHitPolicy": "FIRST",
+    "expectValid": true
+  },
+  {
+    "id": "TC02",
+    "category": "正常·MULTI",
+    "ruleType": "DecisionTable",
+    "description": "健康獎勵折扣規則：每日運動達標折減 0.01；睡眠充足折減 0.005；BMI 正常折減 0.003。三項條件獨立判斷可累加，使用 MULTI hitPolicy。輸入為布林值（運動達標 true/false、睡眠充足 true/false、BMI正常 true/false），輸出為折減金額（DECIMAL）。",
+    "expectedRuleType": "DecisionTable",
+    "expectedHitPolicy": "MULTI",
+    "expectValid": true
+  },
+  {
+    "id": "TC03",
+    "category": "正常·ENUM",
+    "ruleType": "DecisionTable",
+    "description": "海外旅遊險費率表：根據目的地區域（ENUM：亞洲/歐洲/美洲），對應不同的費率係數（DECIMAL）。亞洲 1.0、歐洲 1.3、美洲 1.5。hitPolicy 使用 FIRST。",
+    "expectedRuleType": "DecisionTable",
+    "expectedHitPolicy": "FIRST",
+    "expectValid": true
+  },
+  {
+    "id": "TC04",
+    "category": "正常·DATE",
+    "ruleType": "DecisionTable",
+    "description": "續約折扣規則：根據距上次購買日期（DATE typeRef），決定折扣百分比。距上次購買超過 12 個月（greaterThan 365 天）無折扣；6-12 個月（between [180, 365]）折扣 5%；小於 6 個月（lessThan 180）折扣 10%。",
+    "expectedRuleType": "DecisionTable",
+    "expectedHitPolicy": "FIRST",
+    "expectValid": true
+  },
+  {
+    "id": "TC05",
+    "category": "正常·多輸出",
+    "ruleType": "DecisionTable",
+    "description": "壽險核保綜合評估：根據年齡（INTEGER, between）和是否有既往症（BOOLEAN），同時輸出三個結果欄位：decision（ENUM: 承保/人工評估/拒保）、premium_rate（DECIMAL）、remark（STRING 備註說明）。",
+    "expectedRuleType": "DecisionTable",
+    "expectedOutputCount": 3,
+    "expectValid": true
+  },
+  {
+    "id": "TC06",
+    "category": "邊界值",
+    "ruleType": "DecisionTable",
+    "description": "年齡分段規則（測試 between 邊界含兩端）：between [18,35] 為青年、between [36,50] 為壯年、between [51,65] 為中年、greaterThan 65 為高齡。輸出為年齡分級（ENUM: 青年/壯年/中年/高齡）。需驗證 35 歲屬於青年、36 歲屬於壯年（邊界值正確）。",
+    "expectedRuleType": "DecisionTable",
+    "expectValid": true
+  },
+  {
+    "id": "TC07",
+    "category": "ENUM白名單",
+    "ruleType": "DecisionTable",
+    "description": "（驗證失敗案例）刻意設計一個 ENUM 欄位 decision（allowedValues: [承保, 人工評估, 拒保]），但某條規則的 results.decision 值為「拒絕」（不在 allowedValues 中）。預期觸發 INVALID_ENUM_VALUE 錯誤。",
+    "expectedRuleType": "DecisionTable",
+    "expectValid": false,
+    "expectedErrorCode": "INVALID_ENUM_VALUE"
+  },
+  {
+    "id": "TC08",
+    "category": "衝突偵測",
+    "ruleType": "DecisionTable",
+    "description": "（驗證失敗案例）故意設計 R01 和 R02 的條件範圍重疊：R01 age between [18,35] + hypertension=true → 人工評估；R02 age between [20,30] + hypertension=true → 承保。兩條規則在 age=25, hypertension=true 時可同時命中。預期觸發 INCONSISTENT_TABLE。",
+    "expectedRuleType": "DecisionTable",
+    "expectValid": false,
+    "expectedErrorCode": "INCONSISTENT_TABLE"
+  },
+  {
+    "id": "TC09",
+    "category": "缺欄位",
+    "ruleType": "DecisionTable",
+    "description": "（驗證失敗案例）一個完整的 DecisionTable 但故意移除 hitPolicy 欄位。預期觸發 MISSING_FIELD 錯誤。",
+    "expectedRuleType": "DecisionTable",
+    "expectValid": false,
+    "expectedErrorCode": "MISSING_FIELD"
+  },
+  {
+    "id": "TC10",
+    "category": "Tree推薦",
+    "ruleType": "DecisionTree",
+    "description": "先判斷年齡是否超過 60 歲，若超過則直接拒絕承保；若未超過，再看 BMI 是否在 18.5 到 24 之間，BMI 正常則標準費率，否則加費 15%。",
+    "expectedRuleType": "DecisionTree",
+    "expectValid": true
+  }
+]

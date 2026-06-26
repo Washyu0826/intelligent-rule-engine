@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "V1.1.0 test: same field appears twice in conditions",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "r", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "greaterThanOrEqual", "value": 18 },
+          { "field": "age", "operator": "lessThanOrEqual", "value": 65 }
+        ],
+        "results": [
+          { "field": "r", "value": "ok" }
+        ]
+      }
+    ]
+  }
+}

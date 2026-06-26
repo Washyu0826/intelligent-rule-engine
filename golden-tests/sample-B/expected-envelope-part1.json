@@ -1,0 +1,87 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "case 2 §2.3 — 特約通路時授權書編號不可等於受理編號（v3.14 場景驅動草稿）。§2.1/§2.2 因等 BU 端 B8/B9 受理編號規則/有效授權書編號規則 regex 而暫缺。本 fixture 僅 §2.3，可獨立跑。註：只有 1 條規則，暫用 FIRST；§2.1/§2.2 補齊後切回 MULTI 或 v3.14 ALL_FAIL。",
+  "evaluation": {
+    "completeness": "PARTIAL",
+    "totalScenarios": 2,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "channel", "typeRef": "ENUM",
+        "allowedValues": ["保代","直效","特約"] },
+      { "name": "authMatchesAcceptanceNumber", "typeRef": "BOOLEAN" },
+      { "name": "receivingChannel", "typeRef": "ENUM",
+        "allowedValues": ["MOBILE","ONLINE","DIRECT_ONLINE","OTHER"] },
+      { "name": "newContractPaymentChannel", "typeRef": "STRING" },
+      { "name": "renewalPaymentChannel", "typeRef": "STRING" }
+    ],
+    "outputs": [
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R23",
+        "priority": 1,
+        "conditions": [
+          { "field": "channel", "operator": "equals", "value": "特約" },
+          { "field": "authMatchesAcceptanceNumber", "operator": "equals", "value": true }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "2.3 特約通路時授權書編號不可等於受理編號" }
+        ]
+      },
+      {
+        "ruleId": "R03_1",
+        "priority": 2,
+        "comment": "v3.14 F1a stub — 引用 receivingChannel/payment channel 欄位以滿足 ConsistencyValidator。透過 channel 互斥於 R23（R23 = 特約，本條限 保代/直效）以避免 FIRST hitPolicy 衝突偵測。",
+        "conditions": [
+          { "field": "channel", "operator": "in", "value": ["保代","直效"] },
+          { "field": "authMatchesAcceptanceNumber", "operator": "anything" },
+          { "field": "receivingChannel", "operator": "in", "value": ["MOBILE","ONLINE","DIRECT_ONLINE"] },
+          { "field": "newContractPaymentChannel", "operator": "equals", "value": "指定帳戶轉帳" },
+          { "field": "renewalPaymentChannel", "operator": "equals", "value": "指定帳戶轉帳" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "3.1 指定帳戶轉帳件 — v3.14 F1a stub（規則本體將於 M4/M5 補齊）" }
+        ]
+      }
+    ]
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.14.0",
+  "extensions": {
+    "globalGuards": [
+      {
+        "guardId": "GG01",
+        "description": "本表僅適用受理通路為行動保險、網路投保或直效線上成交的件",
+        "condition": {
+          "field": "receivingChannel",
+          "operator": "in",
+          "value": ["MOBILE", "ONLINE", "DIRECT_ONLINE"]
+        },
+        "onFailure": [
+          { "field": "errorMessage", "value": "本檢核不適用此受理通路" }
+        ]
+      }
+    ],
+    "fieldOr": [
+      {
+        "orId": "FO01",
+        "fields": ["newContractPaymentChannel", "renewalPaymentChannel"],
+        "predicate": { "operator": "equals", "value": "指定帳戶轉帳" },
+        "appliesToRuleIds": ["R03_1"]
+      }
+    ],
+    "footnotes": [
+      {
+        "marker": "1",
+        "text": "在試算上傳中，保代通路不會進行檢核",
+        "altersApplicability": true
+      }
+    ]
+  }
+}

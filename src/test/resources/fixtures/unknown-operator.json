@@ -1,0 +1,25 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "測試：使用不存在的 operator",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "age", "operator": "like", "value": 25 }
+        ],
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    ]
+  }
+}

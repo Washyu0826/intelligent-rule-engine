@@ -1,0 +1,28 @@
+{
+  "ruleType": "DecisionTree",
+  "reason": "ENUM 值不在 allowedValues 中",
+  "rule": {
+    "inputs": [
+      { "name": "risk", "typeRef": "ENUM", "allowedValues": ["LOW", "MEDIUM", "HIGH"] }
+    ],
+    "outputs": [
+      { "name": "decision", "typeRef": "ENUM", "allowedValues": ["承保", "拒保"] }
+    ],
+    "root": {
+      "nodeId": "N01",
+      "condition": { "field": "risk", "operator": "equals", "value": "EXTREME" },
+      "trueBranch": {
+        "nodeId": "N02",
+        "results": [
+          { "field": "decision", "value": "退回" }
+        ]
+      },
+      "falseBranch": {
+        "nodeId": "N03",
+        "results": [
+          { "field": "decision", "value": "承保" }
+        ]
+      }
+    }
+  }
+}

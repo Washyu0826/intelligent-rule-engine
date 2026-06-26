@@ -1,0 +1,65 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "此規則集為 ENUM 錯誤偵測測試案例，故意在結果欄位使用不在 allowedValues 內的值。包含 2 個條件欄位（region 地區、product_type 產品類型）與 1 個結果欄位（tax_rate_label 稅率標籤）。R02 的結果使用了不存在的 allowedValue「免稅」（正確應為「零稅率」），用來驗證 INVALID_ENUM_VALUE 錯誤碼策略。",
+  "evaluation": {
+    "completeness": "INCOMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 0.8,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "FIRST"
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p2.0.0",
+  "rule": {
+    "hitPolicy": "FIRST",
+    "inputs": [
+      { "name": "region", "typeRef": "ENUM", "allowedValues": ["北部", "中部", "南部", "東部"] },
+      { "name": "product_type", "typeRef": "ENUM", "allowedValues": ["食品", "電子", "服飾"] }
+    ],
+    "outputs": [
+      { "name": "tax_rate_label", "typeRef": "ENUM", "allowedValues": ["標準稅率", "優惠稅率", "零稅率"] }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01", "priority": 1,
+        "conditions": [
+          { "field": "region", "operator": "equals", "value": "北部" },
+          { "field": "product_type", "operator": "equals", "value": "食品" }
+        ],
+        "results": [
+          { "field": "tax_rate_label", "value": "優惠稅率" }
+        ]
+      },
+      {
+        "ruleId": "R02", "priority": 2,
+        "conditions": [
+          { "field": "region", "operator": "equals", "value": "東部" },
+          { "field": "product_type", "operator": "equals", "value": "食品" }
+        ],
+        "results": [
+          { "field": "tax_rate_label", "value": "免稅" }
+        ]
+      },
+      {
+        "ruleId": "R03", "priority": 3,
+        "conditions": [
+          { "field": "region", "operator": "anything" },
+          { "field": "product_type", "operator": "equals", "value": "電子" }
+        ],
+        "results": [
+          { "field": "tax_rate_label", "value": "標準稅率" }
+        ]
+      },
+      {
+        "ruleId": "R04", "priority": 4,
+        "conditions": [
+          { "field": "region", "operator": "anything" },
+          { "field": "product_type", "operator": "equals", "value": "服飾" }
+        ],
+        "results": [
+          { "field": "tax_rate_label", "value": "標準稅率" }
+        ]
+      }
+    ]
+  }
+}

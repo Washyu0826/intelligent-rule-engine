@@ -1,0 +1,84 @@
+{
+  "ruleType": "ScoreCard",
+  "reason": "信用評分卡：根據年齡、年收入、負債比、信用歷史長度、近期逾期次數五個維度獨立計分，加總後依總分區間輸出信用等級與核貸額度。",
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.0.0",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 15,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "SCORE"
+  },
+  "rule": {
+    "inputs": [
+      { "name": "age", "typeRef": "INTEGER" },
+      { "name": "annual_income", "typeRef": "INTEGER" },
+      { "name": "debt_ratio", "typeRef": "DECIMAL" },
+      { "name": "credit_history_years", "typeRef": "INTEGER" },
+      { "name": "recent_overdue_count", "typeRef": "INTEGER" }
+    ],
+    "outputs": [
+      { "name": "credit_grade", "typeRef": "ENUM", "allowedValues": ["AAA", "AA", "A", "BBB", "BB", "REJECT"] },
+      { "name": "max_loan_amount", "typeRef": "INTEGER" },
+      { "name": "remark", "typeRef": "STRING" }
+    ],
+    "scoringDimensions": [
+      {
+        "field": "age",
+        "weight": 1.0,
+        "scoringRules": [
+          { "ruleId": "S01", "condition": { "field": "age", "operator": "between", "value": [25, 35] }, "score": 20, "description": "25-35歲：最佳就業年齡" },
+          { "ruleId": "S02", "condition": { "field": "age", "operator": "between", "value": [36, 50] }, "score": 15, "description": "36-50歲：穩定收入期" },
+          { "ruleId": "S03", "condition": { "field": "age", "operator": "between", "value": [18, 24] }, "score": 10, "description": "18-24歲：初入職場" },
+          { "ruleId": "S04", "condition": { "field": "age", "operator": "greaterThan", "value": 50 }, "score": 5, "description": "50歲以上：接近退休" }
+        ]
+      },
+      {
+        "field": "annual_income",
+        "weight": 1.5,
+        "scoringRules": [
+          { "ruleId": "S05", "condition": { "field": "annual_income", "operator": "greaterThanOrEqual", "value": 2000000 }, "score": 30, "description": "年收入200萬以上" },
+          { "ruleId": "S06", "condition": { "field": "annual_income", "operator": "between", "value": [1000000, 1999999] }, "score": 20, "description": "年收入100-200萬" },
+          { "ruleId": "S07", "condition": { "field": "annual_income", "operator": "between", "value": [500000, 999999] }, "score": 10, "description": "年收入50-100萬" },
+          { "ruleId": "S08", "condition": { "field": "annual_income", "operator": "lessThan", "value": 500000 }, "score": 0, "description": "年收入50萬以下" }
+        ]
+      },
+      {
+        "field": "debt_ratio",
+        "weight": 1.2,
+        "scoringRules": [
+          { "ruleId": "S09", "condition": { "field": "debt_ratio", "operator": "lessThan", "value": 0.3 }, "score": 20, "description": "負債比<30%：優良" },
+          { "ruleId": "S10", "condition": { "field": "debt_ratio", "operator": "between", "value": [0.3, 0.5] }, "score": 10, "description": "負債比30-50%：尚可" },
+          { "ruleId": "S11", "condition": { "field": "debt_ratio", "operator": "greaterThan", "value": 0.5 }, "score": -10, "description": "負債比>50%：高風險" }
+        ]
+      },
+      {
+        "field": "credit_history_years",
+        "weight": 1.0,
+        "scoringRules": [
+          { "ruleId": "S12", "condition": { "field": "credit_history_years", "operator": "greaterThanOrEqual", "value": 10 }, "score": 15, "description": "信用歷史10年以上" },
+          { "ruleId": "S13", "condition": { "field": "credit_history_years", "operator": "between", "value": [3, 9] }, "score": 10, "description": "信用歷史3-9年" },
+          { "ruleId": "S14", "condition": { "field": "credit_history_years", "operator": "lessThan", "value": 3 }, "score": 0, "description": "信用歷史不足3年" }
+        ]
+      },
+      {
+        "field": "recent_overdue_count",
+        "weight": 2.0,
+        "scoringRules": [
+          { "ruleId": "S15", "condition": { "field": "recent_overdue_count", "operator": "equals", "value": 0 }, "score": 15, "description": "無逾期紀錄" },
+          { "ruleId": "S16", "condition": { "field": "recent_overdue_count", "operator": "equals", "value": 1 }, "score": 0, "description": "1次逾期" },
+          { "ruleId": "S17", "condition": { "field": "recent_overdue_count", "operator": "greaterThanOrEqual", "value": 2 }, "score": -20, "description": "2次以上逾期：嚴重扣分" }
+        ]
+      }
+    ],
+    "scoreBands": [
+      { "bandId": "B01", "minScore": 80, "maxScore": 100, "results": [{ "field": "credit_grade", "value": "AAA" }, { "field": "max_loan_amount", "value": 5000000 }, { "field": "remark", "value": "最優等級，核貸額度500萬" }] },
+      { "bandId": "B02", "minScore": 65, "maxScore": 79, "results": [{ "field": "credit_grade", "value": "AA" }, { "field": "max_loan_amount", "value": 3000000 }, { "field": "remark", "value": "優良等級，核貸額度300萬" }] },
+      { "bandId": "B03", "minScore": 50, "maxScore": 64, "results": [{ "field": "credit_grade", "value": "A" }, { "field": "max_loan_amount", "value": 1500000 }, { "field": "remark", "value": "良好等級，核貸額度150萬" }] },
+      { "bandId": "B04", "minScore": 35, "maxScore": 49, "results": [{ "field": "credit_grade", "value": "BBB" }, { "field": "max_loan_amount", "value": 800000 }, { "field": "remark", "value": "一般等級，核貸額度80萬" }] },
+      { "bandId": "B05", "minScore": 20, "maxScore": 34, "results": [{ "field": "credit_grade", "value": "BB" }, { "field": "max_loan_amount", "value": 300000 }, { "field": "remark", "value": "偏低等級，核貸額度30萬" }] },
+      { "bandId": "B06", "minScore": 0, "maxScore": 19, "results": [{ "field": "credit_grade", "value": "REJECT" }, { "field": "max_loan_amount", "value": 0 }, { "field": "remark", "value": "評分過低，拒絕核貸" }] }
+    ]
+  }
+}

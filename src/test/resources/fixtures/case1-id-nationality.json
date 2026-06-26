@@ -1,0 +1,79 @@
+{
+  "ruleType": "DecisionTable",
+  "reason": "case 1 — ID 格式 ↔ 國籍別 跨欄位一致性檢核（v3.14 場景驅動）。每條規則 fail 各自拋訊息、可同時多條觸發（被保人錯 + 要保人錯）→ MULTI。等 v3.14 ALL_FAIL hitPolicy 上線後遷移。",
+  "evaluation": {
+    "completeness": "COMPLETE",
+    "totalScenarios": 4,
+    "coverageRate": 1.0,
+    "conflictDetection": "NO_CONFLICT",
+    "recommendedStrategy": "MULTI"
+  },
+  "rule": {
+    "hitPolicy": "MULTI",
+    "inputs": [
+      { "name": "insuredIdFormatIsRocId", "typeRef": "BOOLEAN" },
+      { "name": "insuredNationality", "typeRef": "ENUM", "allowedValues": ["TW", "NON_TW"] },
+      { "name": "policyholderIdFormatIsRocId", "typeRef": "BOOLEAN" },
+      { "name": "policyholderNationality", "typeRef": "ENUM", "allowedValues": ["TW", "NON_TW"] }
+    ],
+    "outputs": [
+      { "name": "errorMessage", "typeRef": "STRING" }
+    ],
+    "rules": [
+      {
+        "ruleId": "R01",
+        "priority": 1,
+        "conditions": [
+          { "field": "insuredIdFormatIsRocId", "operator": "equals", "value": true },
+          { "field": "insuredNationality", "operator": "equals", "value": "NON_TW" },
+          { "field": "policyholderIdFormatIsRocId", "operator": "anything" },
+          { "field": "policyholderNationality", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "1.1 被保人ID為身分證格式，國籍別請選擇中華民國" }
+        ]
+      },
+      {
+        "ruleId": "R02",
+        "priority": 2,
+        "conditions": [
+          { "field": "insuredIdFormatIsRocId", "operator": "equals", "value": false },
+          { "field": "insuredNationality", "operator": "equals", "value": "TW" },
+          { "field": "policyholderIdFormatIsRocId", "operator": "anything" },
+          { "field": "policyholderNationality", "operator": "anything" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "1.2 被保人ID不為身分證格式，國籍別請選擇非中華民國" }
+        ]
+      },
+      {
+        "ruleId": "R03",
+        "priority": 3,
+        "conditions": [
+          { "field": "insuredIdFormatIsRocId", "operator": "anything" },
+          { "field": "insuredNationality", "operator": "anything" },
+          { "field": "policyholderIdFormatIsRocId", "operator": "equals", "value": true },
+          { "field": "policyholderNationality", "operator": "equals", "value": "NON_TW" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "1.3 要保人ID為身分證格式，國籍別請選擇中華民國" }
+        ]
+      },
+      {
+        "ruleId": "R04",
+        "priority": 4,
+        "conditions": [
+          { "field": "insuredIdFormatIsRocId", "operator": "anything" },
+          { "field": "insuredNationality", "operator": "anything" },
+          { "field": "policyholderIdFormatIsRocId", "operator": "equals", "value": false },
+          { "field": "policyholderNationality", "operator": "equals", "value": "TW" }
+        ],
+        "results": [
+          { "field": "errorMessage", "value": "1.4 要保人ID不為身分證格式，國籍別請選擇非中華民國" }
+        ]
+      }
+    ]
+  },
+  "schemaVersion": "1.0.0",
+  "promptVersion": "p3.14.0"
+}
