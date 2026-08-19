@@ -1,4 +1,4 @@
-import{r as d,j as e}from"./react-vendor-Ah1pgjPn.js";import{p as z,g as P,f as H,a as F,b as W}from"./types-BTUuzj62.js";import{u as G,b as u}from"./index-DpNYTjZM.js";import{A as T,m as k,R as V,b as J,c as q}from"./framer-motion-hZ45UV5q.js";const w={type:"spring",stiffness:500,damping:35},A={type:"spring",stiffness:300,damping:30};function U({controls:r}){return e.jsxs("div",{onPointerDown:n=>r.start(n),className:`
+import{r as d,j as e}from"./react-vendor-Ah1pgjPn.js";import{p as z,g as P,f as H,a as F,b as W}from"./types-BTUuzj62.js";import{u as G,b as u}from"./index-2T2Av26K.js";import{A as T,m as k,R as V,b as J,c as q}from"./framer-motion-hZ45UV5q.js";const w={type:"spring",stiffness:500,damping:35},A={type:"spring",stiffness:300,damping:30};function U({controls:r}){return e.jsxs("div",{onPointerDown:n=>r.start(n),className:`
         flex flex-col items-center justify-center gap-[3px] w-5 h-8
         cursor-grab active:cursor-grabbing
         dark:text-text-tertiary/40 dark:hover:text-text-secondary

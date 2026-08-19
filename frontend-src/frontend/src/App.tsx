@@ -3,6 +3,8 @@ import { useTheme } from './hooks/useTheme';
 import { useRuleGeneration } from './hooks/useRuleGeneration';
 import { api } from './api/rulesApi';
 import ThemeToggle from './components/common/ThemeToggle';
+import ApiKeyControl from './components/common/ApiKeyControl';
+import LoginControl from './components/common/LoginControl';
 import WelcomeGuide from './components/common/WelcomeGuide';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import InputPage from './components/InputPage/InputPage';
@@ -118,6 +120,8 @@ export default function App() {
             <span className="text-[9px] font-mono tabular-nums dark:text-text-tertiary/60 text-light-text-tertiary/60 hidden sm:inline">
               {VERSION}
             </span>
+            <LoginControl />
+            <ApiKeyControl />
             <ThemeToggle mode={mode} onCycle={cycle} />
           </div>
         </div>

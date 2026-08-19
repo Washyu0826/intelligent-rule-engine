@@ -1,3 +1,5 @@
+import { authHeaders } from './apiKey';
+import { bearerHeader } from './auth';
 import type {
   RecommendRequest,
   RecommendResponse,
@@ -34,7 +36,7 @@ class ApiClient {
     try {
       res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(), ...bearerHeader() },
         body: JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -78,6 +80,10 @@ class ApiClient {
     switch (status) {
       case 400:
         return '請檢查輸入格式是否正確';
+      case 401:
+        return '需要登入 —— 請點右上角「登入」；若是機器整合請改用 X-API-Key（鑰匙圖示）';
+      case 403:
+        return '權限不足或憑證不正確 —— 請確認登入帳號的角色，或重新輸入 API Key';
       case 429:
         return 'AI 服務目前繁忙，請稍候 30 秒重試，或切換到「直接貼上規則資料」模式';
       case 500:
@@ -179,7 +185,7 @@ class ApiClient {
       // 使用 fetch + ReadableStream 處理 SSE（因為 EventSource 不支援 POST）
       fetch('/tools/generate/stream', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(), ...bearerHeader() },
         body: JSON.stringify(request),
         // 與後端 SseEmitter(600s) 對齊；逾時會中斷整條串流並落入 catch
         signal: AbortSignal.timeout(600_000),
@@ -251,7 +257,10 @@ class ApiClient {
 
   async getProviders(): Promise<import('../types').LlmProviderInfo[]> {
     try {
-      const res = await fetch('/tools/providers', { signal: AbortSignal.timeout(TIMEOUT_QUERY) });
+      const res = await fetch('/tools/providers', {
+        headers: { ...authHeaders(), ...bearerHeader() },
+        signal: AbortSignal.timeout(TIMEOUT_QUERY),
+      });
       if (!res.ok) return [];
       return res.json();
     } catch {
@@ -266,7 +275,7 @@ class ApiClient {
     if (q) params.set('q', q);
     const url = '/tools/glossary' + (params.toString() ? `?${params}` : '');
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(TIMEOUT_QUERY) });
+      const res = await fetch(url, { headers: { ...authHeaders(), ...bearerHeader() }, signal: AbortSignal.timeout(TIMEOUT_QUERY) });
       if (!res.ok) return [];
       return res.json();
     } catch {
@@ -277,6 +286,7 @@ class ApiClient {
   async getGlossaryEntry(id: string): Promise<import('../types').GlossaryEntry | null> {
     try {
       const res = await fetch(`/tools/glossary/${encodeURIComponent(id)}`, {
+        headers: { ...authHeaders(), ...bearerHeader() },
         signal: AbortSignal.timeout(TIMEOUT_QUERY),
       });
       if (!res.ok) return null;
@@ -289,6 +299,7 @@ class ApiClient {
   async getGlossaryStats(): Promise<import('../types').GlossaryStats | null> {
     try {
       const res = await fetch('/tools/glossary/stats', {
+        headers: { ...authHeaders(), ...bearerHeader() },
         signal: AbortSignal.timeout(TIMEOUT_QUERY),
       });
       if (!res.ok) return null;
@@ -395,7 +406,7 @@ class ApiClient {
   async exportGroupXlsx(envelope: RuleEnvelope): Promise<GroupXlsxExportResponse> {
     const res = await fetch('/tools/export/group-xlsx', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeaders(), ...bearerHeader() },
       body: JSON.stringify({ envelope }),
       signal: AbortSignal.timeout(TIMEOUT_DEFAULT),
     });
