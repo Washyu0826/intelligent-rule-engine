@@ -1,6 +1,29 @@
 spring:
   application:
     name: rules-mcp-server
+
+  # ── Persistence（P1-S2）──
+  datasource:
+    # 本地開發預設連本機 PostgreSQL 服務（127.0.0.1:5432 的 rules 庫）；
+    # 若改用 docker compose 的 postgres，URL 換成 localhost:5433（見 docker-compose.yml 註解）
+    # 容器/雲上以 SPRING_DATASOURCE_* 環境變數覆蓋（12-Factor）
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/rules}
+    username: ${SPRING_DATASOURCE_USERNAME:rules}
+    password: ${SPRING_DATASOURCE_PASSWORD:rules-local-dev}
+  jpa:
+    hibernate:
+      # schema 的唯一真相來源是 Flyway migration —— Hibernate 只驗證 entity 與
+      # 實際 schema 一致，不准它改表（ddl-auto: update 在多實例/回滾情境是災難）
+      ddl-auto: validate
+    open-in-view: false   # OSIV 預設開啟會讓連線佔用橫跨整個 request，明確關閉
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# 稽核儲存層：jpa = 落 PostgreSQL（P1-S3）；in-memory = v3.12 舊行為（測試環境用它，
+# 見 src/test/resources/application.yml —— 該檔不設此鍵、matchIfMissing 讓 in-memory 接手）
+audit:
+  repository: jpa
   lifecycle:
     timeout-per-shutdown-phase: 30s
   web:
@@ -34,11 +57,18 @@ rules:
     # 全 provider fallback model；建議用各 provider 專屬欄位（rules.llm.{claude|gemini|ollama|openai}.model）
     # 各 service 的 @Value 會走 ${rules.llm.<provider>.model:${rules.llm.model:<provider 預設>}} 鏈
     # model: "qwen2.5:7b"        # 已移除全域 model — 避免共用同名導致 Claude/Gemini 拿到 Ollama 的 model 名而打 404
-    api-key: "${CLAUDE_API_KEY:}"   # 12-Factor: 從環境變數注入
+    # 各 provider 的 key 走自己的命名空間（與 model 一致）。
+    # 舊的全域 rules.llm.api-key 仍保留為 fallback，但 Claude 與 Gemini 共用它時
+    # 兩家不可能同時設定 —— 新設定請一律用 rules.llm.<provider>.api-key。
+    api-key: "${RULES_LLM_API_KEY:}"   # legacy fallback（12-Factor: 從環境變數注入）
     timeout-seconds: 180
     max-async-timeout-seconds: 1800   # 多 case 端點（/test-run）非同步逾時封頂；逾時會 cancel(true) 中止剩餘 case
     max-retry: 3              # Level A: JSON parse retry 上限
     self-repair: false        # Level B: 驗證錯誤回饋修復（true=品質優先但多花 API 額度，false=速度優先）
+    claude:
+      api-key: "${CLAUDE_API_KEY:}"
+    gemini:
+      api-key: "${GEMINI_API_KEY:}"
     ollama:
       base-url: "http://localhost:11434"
     openai:
@@ -67,6 +97,19 @@ rules:
     sse:
       pool-size: 16         # /generate/stream SSE 推送
       queue-capacity: 64
+  # ── JWT 認證（P1-S4）──
+  security:
+    jwt:
+      # permissive = /tools/** 過渡期放行（帶 token 仍解析出身分，稽核可歸因）；
+      # enforce    = 無 token 一律 401。前端登入頁（P1-S5）落地後切 enforce。
+      # /auth/me 不受此開關影響、永遠強制 —— enforce 行為的驗證錨點。
+      mode: permissive
+      # HS256 需 >= 32 bytes；dev 預設僅供本機，prod 由 RULES_JWT_SECRET 注入
+      secret: "${RULES_JWT_SECRET:local-dev-only-secret-change-me-0123456789abcdef}"
+      ttl-minutes: 60
+    demo-users:
+      enabled: true         # prod 必須關（application-prod.yml）
+      password: "${RULES_DEMO_PASSWORD:demo-pass-2026}"
 
 # ==========================================
 # Observability（計畫書要求 Actuator + Micrometer）

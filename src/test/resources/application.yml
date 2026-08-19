@@ -1,5 +1,25 @@
 # Test profile - disable MCP transport, only test service logic
+#
+# 注意：這個檔案在 classpath 上「整份遮蔽」src/main 的 application.yml
+# （兩個同名 application.yml，test 目錄優先）—— 所以 main 檔的 datasource
+# 設定測試看不到，必須在這裡自行定義。
 spring:
+  # ── 測試資料庫分兩層（P1-S2）──
+  #  1. 全體單元/整合測試：H2 in-memory（毫秒級啟動，不需要 Docker）
+  #  2. migration 與 JSONB 行為：PostgresMigrationTest 用 Testcontainers 跑真 PG
+  #     （@Testcontainers(disabledWithoutDocker=true)，本機沒開 Docker 自動跳過）
+  datasource:
+    url: jdbc:h2:mem:rulesdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      # 測試用 entity 自動建 H2 schema；真 schema 正確性由 Testcontainers 那層把關
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    # migration SQL 是 PostgreSQL 方言（JSONB、IDENTITY），不在 H2 上跑
+    enabled: false
   ai:
     mcp:
       server:

@@ -7,13 +7,17 @@ metadata:
     app: rules-mcp
 data:
   # Spring profile
-  SPRING_PROFILES_ACTIVE: "cloud"
+  # 注意：此處原本是 "cloud"，但 repo 內沒有 application-cloud.yml ——
+  # Spring 會安靜地退回 application.yml，導致 prod 的所有加固（API key 認證、
+  # WARN 級 log、CORS 白名單、LLM fail-fast）在叢集裡一條都不會生效。
+  SPRING_PROFILES_ACTIVE: "prod"
 
   # LLM Provider 預設（可按 deployment 改）
   RULES_LLM_PROVIDER: "claude"
   RULES_LLM_TIMEOUT_SECONDS: "30"
 
-  # Caching（cloud profile 切到 Redis）
+  # Caching：目前應用只有 Caffeine 記憶體快取（pom.xml 沒有 spring-boot-starter-data-redis），
+  # 此鍵未被任何 @Value 讀取 —— 保留為未來 Redis 化的設計佔位，非生效設定。
   CACHE_PROVIDER: "redis"
 
   # JVM 參數（容器化建議）

@@ -8,16 +8,30 @@
 rules:
   llm:
     provider: ${RULES_LLM_PROVIDER:claude}
-    model: ${RULES_LLM_MODEL:claude-sonnet-4-6}
-    api-key: ${RULES_LLM_API_KEY:}
+    # 不設全域 model —— 它會被所有 provider 共用，切成 ollama 時會拿到 Claude 的 model 名
+    # 而打 404（application.yml 已為此移除該鍵，這裡不可再寫回來）。
+    claude:
+      model: ${RULES_LLM_MODEL:claude-sonnet-4-6}
+      # 部署一律注入 CLAUDE_API_KEY（.env.example / docker-compose / k8s 皆同名）；
+      # RULES_LLM_API_KEY 為舊部署的相容別名。
+      api-key: ${CLAUDE_API_KEY:${RULES_LLM_API_KEY:}}
+    gemini:
+      api-key: ${GEMINI_API_KEY:}
     timeout-seconds: 300
     max-retry: 3
     self-repair: false
+    # 設定錯誤時寧可開不起來，也不要靜默降級成離線罐頭規則（見 LlmCredentialCheck）
+    fail-fast: true
   cors:
     allowed-origins: ${RULES_CORS_ORIGINS:https://your-production-domain.com}
   security:
     api-key-enabled: true
     api-key: ${RULES_API_KEY:}
+    jwt:
+      mode: enforce                      # prod 一律強制 Bearer token
+      secret: ${RULES_JWT_SECRET:}       # 空值會被啟動檢查擋下，不會靜默用 dev 預設
+    demo-users:
+      enabled: false                     # prod 絕不 seed demo 帳號
 
 server:
   port: ${SERVER_PORT:8080}
@@ -36,4 +50,7 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: authorized
+      # 合法值只有 never / when-authorized / always ——
+      # 原本寫 "authorized" 會讓整個 prod profile 綁定失敗、應用直接起不來。
+      # 本專案未接 Spring Security，when-authorized 實際等同不顯示細節。
+      show-details: when-authorized

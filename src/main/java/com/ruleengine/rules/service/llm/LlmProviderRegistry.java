@@ -44,6 +44,27 @@ public class LlmProviderRegistry {
                 .orElse(null);
     }
 
+    /**
+     * 嚴格取得「設定所指定」的 provider —— 不做任何 fallback，找不到就回 null。
+     *
+     * <p>
+     * {@link #getDefault()} 在指定的 provider 不可用時會靜默改用第一個可用的，
+     * 而 {@code OllamaService.isAvailable()} 只檢查 base-url 非空、且該值有預設
+     * {@code http://localhost:11434} —— 意思是 Ollama 幾乎永遠「可用」。
+     * 於是「設 claude 但沒有 key」會靜默變成「打本機 Ollama」。
+     * 診斷設定問題時必須用這個方法，不能用 getDefault()。
+     * </p>
+     */
+    public LlmProvider getConfigured() {
+        if (defaultProviderName == null || defaultProviderName.isBlank()) return null;
+        return providers.get(defaultProviderName.toLowerCase());
+    }
+
+    /** 設定檔中 rules.llm.provider 的原始值（可能為空或拼錯）。 */
+    public String getConfiguredProviderName() {
+        return defaultProviderName;
+    }
+
     /** 依名稱取得指定 provider */
     public LlmProvider getByName(String name) {
         if (name == null || name.isBlank()) return getDefault();
