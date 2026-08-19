@@ -297,7 +297,9 @@ public class RuleLookupService {
      * Returns null when the input field is missing or the token is malformed
      * (caller treats null expected as non-match for ordering operators).
      */
-    Object resolveValueRef(String ref, Map<String, Object> inputContext) {
+    // P2-S2 起升為 public：RuleExecutionEngine 的 trace 需要「解析後的期望值」
+    // （回放紀錄裡 $today 必須是當時的具體日期，不是符號）
+    public Object resolveValueRef(String ref, Map<String, Object> inputContext) {
         if (ref == null) return null;
         String trimmed = ref.trim();
         if ("$today".equalsIgnoreCase(trimmed)) {
