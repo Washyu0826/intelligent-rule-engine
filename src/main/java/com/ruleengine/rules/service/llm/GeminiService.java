@@ -6,7 +6,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -34,7 +33,9 @@ public class GeminiService implements LlmProvider {
     private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${rules.llm.api-key:}")
+    // 原本與 ClaudeService 共用同一個 rules.llm.api-key —— 兩家不可能同時設定，
+    // 且 .env / k8s 注入的 GEMINI_API_KEY 從未被任何地方讀取。改為獨立命名空間。
+    @Value("${rules.llm.gemini.api-key:${rules.llm.api-key:}}")
     private String apiKey;
 
     @Value("${rules.llm.gemini.model:${rules.llm.model:gemini-2.0-flash}}")

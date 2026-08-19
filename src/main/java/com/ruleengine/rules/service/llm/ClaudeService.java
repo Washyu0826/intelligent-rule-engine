@@ -6,7 +6,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -30,8 +29,11 @@ public class ClaudeService implements LlmProvider {
 
     private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
+    private final LlmGenerationCache generationCache;
 
-    @Value("${rules.llm.api-key:}")
+    // 各 provider 用自己的命名空間，與 model 的解析鏈一致；
+    // 保留 rules.llm.api-key 作為既有部署的相容 fallback（勿再新增使用）。
+    @Value("${rules.llm.claude.api-key:${rules.llm.api-key:}}")
     private String apiKey;
 
     @Value("${rules.llm.claude.model:${rules.llm.model:claude-sonnet-4-6}}")
@@ -40,8 +42,9 @@ public class ClaudeService implements LlmProvider {
     @Value("${rules.llm.timeout-seconds:120}")
     private int timeoutSeconds;
 
-    public ClaudeService(ObjectMapper objectMapper) {
+    public ClaudeService(ObjectMapper objectMapper, LlmGenerationCache generationCache) {
         this.objectMapper = objectMapper;
+        this.generationCache = generationCache;
     }
 
     @PostConstruct
@@ -87,22 +90,23 @@ public class ClaudeService implements LlmProvider {
         }
         String resolvedMode = mode != null ? mode : "normal";
         String resolvedType = ruleType != null ? ruleType : "DecisionTable";
-        return doGenerateRuleJson(description, resolvedMode, resolvedType);
+        // 經獨立的 LlmGenerationCache bean 取快取 —— 直接把 @Cacheable 標在下面的
+        // doGenerateRuleJson 上會因為同類別內部呼叫而被 proxy 略過（v3.16.3 前的實況）。
+        return generationCache.getOrGenerate(
+                LlmGenerationCache.key("claude", description, resolvedMode, resolvedType),
+                () -> doGenerateRuleJson(description, resolvedMode, resolvedType));
     }
 
-    @Cacheable(value = "llmGenerate", key = "'claude_' + #description.hashCode() + '_' + #mode + '_' + #ruleType")
     public String doGenerateRuleJson(String description, String mode, String ruleType) {
         log.info("生成模式：{}, 規則型態：{}", mode, ruleType);
 
-        // 注入維度解析（與 GeminiService 相同邏輯）
-        DescriptionDimensionParser.ParsedDimensions dims = DescriptionDimensionParser.getCurrentDims();
-        String dimSection = "";
-        if (dims != null && !dims.inputs().isEmpty()) {
-            dimSection = new DescriptionDimensionParser().formatForPrompt(dims);
-        }
-
+        // 註：此處原本讀取 DescriptionDimensionParser 的 static ThreadLocal 來注入維度區塊。
+        // 該 ThreadLocal 只由 OllamaService 寫入，Claude 路徑永遠拿不到自己的解析結果 ——
+        // 唯一會非 null 的情況是同一條池執行緒上「前一個」請求殘留的維度，
+        // 亦即把別人的描述解析結果送進本次 prompt。維度預解析是小模型補償機制
+        // （見 LlmProvider.usesDimensionPreparse），Claude 不需要，故整段移除。
         String systemPrompt = PromptGuard.systemGuardSection() + buildSystemPrompt(ruleType);
-        String userPrompt = PromptGuard.wrap(description) + dimSection;
+        String userPrompt = PromptGuard.wrap(description);
 
         // === 首次呼叫 ===
         String rawJson = callClaudeApi(systemPrompt, userPrompt, 0);

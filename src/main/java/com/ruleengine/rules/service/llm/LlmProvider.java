@@ -93,4 +93,24 @@ public interface LlmProvider {
      * 取得提供者名稱（用於日誌和偵錯）。
      */
     String getProviderName();
+
+    /**
+     * 此 provider 是否採用「描述維度預解析」補償機制。
+     *
+     * <p>
+     * {@link DescriptionDimensionParser} 的用途是補償小模型無法從複雜中文描述中
+     * 正確識別維度的問題（見該類別 javadoc），因此只有本地小模型 provider 需要。
+     * 回傳 {@code true} 時，generator 會用同一份描述獨立解析出的維度執行後處理
+     * （維度擴展 + Two-Pass 笛卡爾積填充）。
+     * </p>
+     *
+     * <p>
+     * <b>設計註記：</b>此旗標取代了原本以 {@code static ThreadLocal} 在 provider 與
+     * generator 之間隱性傳遞維度的做法 —— 該做法在執行緒池（v3.16 起 LLM 工作跑在
+     * 共用 {@code llmExecutor}）上會把前一個請求的解析結果洩漏給下一個請求。
+     * </p>
+     */
+    default boolean usesDimensionPreparse() {
+        return false;
+    }
 }

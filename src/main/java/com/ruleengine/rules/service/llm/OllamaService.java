@@ -6,7 +6,6 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -28,6 +27,7 @@ public class OllamaService implements LlmProvider {
     private RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
     private final DescriptionDimensionParser dimensionParser;
+    private final LlmGenerationCache generationCache;
 
     @Value("${rules.llm.ollama.base-url:http://localhost:11434}")
     private String baseUrl;
@@ -38,9 +38,11 @@ public class OllamaService implements LlmProvider {
     @Value("${rules.llm.timeout-seconds:120}")
     private int timeoutSeconds;
 
-    public OllamaService(ObjectMapper objectMapper, DescriptionDimensionParser dimensionParser) {
+    public OllamaService(ObjectMapper objectMapper, DescriptionDimensionParser dimensionParser,
+                         LlmGenerationCache generationCache) {
         this.objectMapper = objectMapper;
         this.dimensionParser = dimensionParser;
+        this.generationCache = generationCache;
     }
 
     @PostConstruct
@@ -101,6 +103,12 @@ public class OllamaService implements LlmProvider {
         return "Ollama (" + model + ")";
     }
 
+    /** 本地小模型：需要維度預解析補償，generator 端據此啟用維度擴展 / 笛卡爾積填充。 */
+    @Override
+    public boolean usesDimensionPreparse() {
+        return true;
+    }
+
     @Override
     public String generateRuleJson(String description) {
         return generateRuleJson(description, "normal", "DecisionTable");
@@ -119,7 +127,10 @@ public class OllamaService implements LlmProvider {
         }
         String resolvedMode = mode != null ? mode : "normal";
         String resolvedType = ruleType != null ? ruleType : "DecisionTable";
-        return doGenerateRuleJson(description, resolvedMode, resolvedType);
+        // 見 ClaudeService 同段註解：快取必須跨 bean 邊界才會生效。
+        return generationCache.getOrGenerate(
+                LlmGenerationCache.key("ollama", description, resolvedMode, resolvedType),
+                () -> doGenerateRuleJson(description, resolvedMode, resolvedType));
     }
 
     @Override
@@ -163,13 +174,13 @@ public class OllamaService implements LlmProvider {
         }
     }
 
-    @Cacheable(value = "llmGenerate", key = "'ollama_' + #description.hashCode() + '_' + #mode + '_' + #ruleType")
     public String doGenerateRuleJson(String description, String mode, String ruleType) {
         log.info("生成模式：{}, 規則型態：{}", mode, ruleType);
 
-        // 預解析維度（Phase 2.2.0 增強）
+        // 預解析維度（Phase 2.2.0 增強）—— 純函式，只用於本次 prompt 組裝。
+        // Generator 端的後處理由 usesDimensionPreparse() 旗標驅動、各自獨立 parse，
+        // 不再透過 ThreadLocal 隱性共享（見 LlmProvider.usesDimensionPreparse javadoc）。
         DescriptionDimensionParser.ParsedDimensions dims = dimensionParser.parse(description);
-        DescriptionDimensionParser.setCurrentDims(dims); // 傳遞給 Generator 後處理
         String prompt = buildPrompt(description, ruleType, dims);
 
         for (int attempt = 0; attempt < MAX_RETRY; attempt++) {
@@ -347,7 +358,6 @@ public class OllamaService implements LlmProvider {
         if (baseUrl == null || baseUrl.isBlank()) return null;
         String resolvedType = ruleType != null ? ruleType : "DecisionTable";
         DescriptionDimensionParser.ParsedDimensions dims = dimensionParser.parse(description);
-        DescriptionDimensionParser.setCurrentDims(dims);
         String prompt = buildPrompt(description, resolvedType, dims);
 
         log.info("Streaming 生成開始 | ruleType={}", resolvedType);

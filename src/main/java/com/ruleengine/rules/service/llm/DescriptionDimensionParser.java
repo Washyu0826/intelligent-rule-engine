@@ -16,22 +16,16 @@ import java.util.regex.Pattern;
 @Slf4j
 public class DescriptionDimensionParser {
 
-    /**
-     * ThreadLocal 用於在 LLM 生成→Generator 後處理之間傳遞維度解析結果。
-     */
-    private static final ThreadLocal<ParsedDimensions> CURRENT_DIMS = new ThreadLocal<>();
-
-    public static void setCurrentDims(ParsedDimensions dims) {
-        CURRENT_DIMS.set(dims);
-    }
-
-    public static ParsedDimensions getCurrentDims() {
-        return CURRENT_DIMS.get();
-    }
-
-    public static void clearCurrentDims() {
-        CURRENT_DIMS.remove();
-    }
+    // v3.16.3：移除 static ThreadLocal CURRENT_DIMS。
+    //
+    // 原本用它在「LLM 生成」與「generator 後處理」之間隱性傳遞解析結果，但：
+    //   - 只有 OllamaService 寫入，只有 DecisionTableGenerator 清除；
+    //     DecisionTreeGenerator / ScoreCardGenerator 走完後值會殘留在執行緒上。
+    //   - v3.16 起 LLM 工作跑在共用的 llmExecutor 池，執行緒高度重用 →
+    //     殘留值會被「下一個請求」讀到（別人的欄位進到你的 prompt 與 envelope）。
+    //
+    // 現行作法：parse() 是純函式，呼叫端各自獨立呼叫；generator 端是否套用維度後處理
+    // 由 LlmProvider.usesDimensionPreparse() 顯式宣告。無共享可變狀態。
 
     /**
      * 解析結果

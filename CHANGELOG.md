@@ -6,6 +6,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v3.16.3] - 2026-08-18 — 共享狀態修正：ThreadLocal 跨請求污染 + 失效的 LLM 快取
+
+### Fixed — 維度解析結果跨請求洩漏（保密 + 正確性）
+- `DescriptionDimensionParser` 的 **static `ThreadLocal<ParsedDimensions>` 已移除**。
+  原本它被用來在「LLM 生成」與「generator 後處理」之間隱性傳值，但只有 `OllamaService`
+  寫入、只有 `DecisionTableGenerator` 清除 —— `DecisionTreeGenerator` / `ScoreCardGenerator`
+  走完後值會殘留在執行緒上。v3.16 起 LLM 工作跑在共用的 `llmExecutor` 池、執行緒高度重用，
+  殘留值會被**下一個請求**讀到：`ClaudeService` 會把前一個請求解析出的欄位塞進本次 prompt，
+  `DecisionTableGenerator` 會拿它去跑維度擴展 / 笛卡爾積填充，產出不屬於該張表的欄位。
+- 改為顯式契約：`LlmProvider.usesDimensionPreparse()`（預設 `false`，`OllamaService` 覆寫為
+  `true`——維度預解析本來就是補償本地小模型的機制）。`DecisionTableGenerator` 以方法區域的
+  `LlmGenerationTrace` 承接訊號，`parse()` 由呼叫端各自獨立執行（純 regex，典型 <5ms，
+  與 `PreflightService` / `SpecLintService` 既有作法一致）。無共享可變狀態。
+- `ClaudeService` 移除該段維度注入 —— Claude 路徑從來拿不到自己的解析結果，
+  唯一非 null 的情況就是上述污染。
+
+### Fixed — `llmGenerate` 快取從未生效
+- `@Cacheable` 原本標在各 provider 的 `doGenerateRuleJson(...)` 上，而該方法只被同類別的
+  `generateRuleJson(...)` 以 `this.` 內部呼叫。Spring Cache 預設 proxy 模式下內部呼叫
+  不經過 proxy → **註解自始無效，命中率恆為 0**（v3.16.0 調整的「50 筆 / 30 分」
+  調的是一個沒有運作的東西）。專案對快取有 0 個測試，因此長期無訊號。
+- 新增 `LlmGenerationCache` @Component 作為唯一快取入口，provider 跨 bean 邊界呼叫，
+  註解才會作用。Claude / Ollama 已接上（Gemini 先前也沒有實際標註，維持原狀）。
+- 快取鍵由 `description.hashCode()`（32-bit，碰撞會回傳**另一個請求的規則 JSON**）
+  改為 `provider|mode|ruleType|sha256(description)` —— 消除碰撞，且鍵長度固定，
+  不因 50KB 描述而膨脹。
+- 加上 `unless = "#result == null"`：provider 失敗回 null 時不進快取，
+  避免一次暫時性 API 失敗被固定 30 分鐘。
+
+### Tests
+- 新增 `LlmGenerationCacheTest`（7 測試）：快取語意（命中只執行一次 loader、null 不入快取、
+  鍵區分度、鍵長度固定）、**端對端 proxy 邊界**（同一描述連打兩次，WireMock 只應收到 1 次
+  `/api/chat`）、維度預解析契約（只有 Ollama 宣告、介面預設 false、
+  `DescriptionDimensionParser` 不得再有 `ThreadLocal` 靜態欄位）。
+- 端對端那條已反向驗證：還原修正前的寫法後失敗於
+  `Expected exactly 1 requests ... but received 2`，確認不是空測試。
+- `LlmIntegrationTest` 加上 `llmGenerate` 快取清理 —— 快取現在真的會生效，
+  測試間必須隔離才有決定性。
+- 全套件 **656 測試全綠**（649 → 656）。
+
+---
+
 ## [v3.16.2] - 2026-06-11 — 深度 code review 修正：取消機制補全 + 截斷透明化結構化
 
 ### Fixed — 非同步取消（v3.16 殭屍工作修復的下半場）

@@ -47,9 +47,15 @@ class LlmIntegrationTest {
         registry.add("rules.llm.ollama.base-url", () -> "http://localhost:" + wireMock.port());
     }
 
+    @Autowired org.springframework.cache.CacheManager cacheManager;
+
     @BeforeEach
     void resetWireMock() {
         wireMock.resetAll();
+        // v3.16.3 起 llmGenerate 快取真的會生效（先前因 self-invocation 而失效），
+        // 測試間若不清除，相同描述的後續案例會拿到前一案的 stub 結果。
+        var llmCache = cacheManager.getCache("llmGenerate");
+        if (llmCache != null) llmCache.clear();
     }
 
     @Test

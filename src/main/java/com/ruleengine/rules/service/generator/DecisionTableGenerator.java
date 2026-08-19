@@ -65,6 +65,29 @@ public class DecisionTableGenerator implements RuleGenerator {
     private final OfflineFallbackService offlineFallbackService;
     private final DimensionExpander dimensionExpander;
     private final CartesianProductFiller cartesianProductFiller;
+    private final DescriptionDimensionParser dimensionParser;
+
+    /**
+     * 單次 generate 呼叫的區域性生成軌跡。
+     *
+     * <p>
+     * 只在 {@link #generateInternal} 的呼叫堆疊內存活、以參數顯式傳遞，
+     * 因此不存在跨請求或跨執行緒共享的可能。取代 v3.16.3 前以
+     * {@code DescriptionDimensionParser} 的 static ThreadLocal 在 LLM 層與
+     * generator 後處理之間隱性傳值的作法。
+     * </p>
+     */
+    private static final class LlmGenerationTrace {
+        private DescriptionDimensionParser.ParsedDimensions dimensions;
+
+        DescriptionDimensionParser.ParsedDimensions getDimensions() {
+            return dimensions;
+        }
+
+        void setDimensions(DescriptionDimensionParser.ParsedDimensions dimensions) {
+            this.dimensions = dimensions;
+        }
+    }
 
     /** 用於 Self-Repair loop 中的驗證和分析 */
     private RuleValidator decisionTableValidator;
@@ -136,32 +159,30 @@ public class DecisionTableGenerator implements RuleGenerator {
         }
 
         // 1. 模式判斷 + 解析
-        RuleEnvelope envelope = resolveEnvelope(description, mode);
+        //    trace 是方法區域物件 —— 用來把「本次是否真的走了會做維度預解析的 LLM」
+        //    這個訊號顯式帶回來，取代原本的 static ThreadLocal（跨請求污染來源）。
+        LlmGenerationTrace trace = new LlmGenerationTrace();
+        RuleEnvelope envelope = resolveEnvelope(description, mode, trace);
 
         // 2. 正規化
         normalizer.normalize(envelope, schemaVersion, promptVersion);
 
-        // 2.5 維度擴展 + Two-Pass 笛卡爾積填充
-        DescriptionDimensionParser.ParsedDimensions parsedDims = null;
-        try {
-            parsedDims = DescriptionDimensionParser.getCurrentDims();
-            if (parsedDims != null && !parsedDims.inputs().isEmpty() && hasRules(envelope)
-                    && !isMultiHitPolicy(envelope)) {
-                // 2.5a 先補齊遺漏的維度（若 LLM 只用了部分 inputs）
-                envelope = dimensionExpander.expand(envelope, parsedDims);
+        // 2.5 維度擴展 + Two-Pass 笛卡爾積填充（僅在本次確實由預解析型 provider 生成時）
+        DescriptionDimensionParser.ParsedDimensions parsedDims = trace.getDimensions();
+        if (parsedDims != null && !parsedDims.inputs().isEmpty() && hasRules(envelope)
+                && !isMultiHitPolicy(envelope)) {
+            // 2.5a 先補齊遺漏的維度（若 LLM 只用了部分 inputs）
+            envelope = dimensionExpander.expand(envelope, parsedDims);
 
-                // 2.5b Two-Pass: 笛卡爾積填充（補齊缺少的條件組合）
-                if (parsedDims.estimatedCartesian() > 1) {
-                    int ruleCount = envelope.getRule().getRules().size();
-                    int cartesian = parsedDims.estimatedCartesian();
-                    if (ruleCount < cartesian) {
-                        log.info("Two-Pass: rules={} < cartesian={}，啟動笛卡爾積填充", ruleCount, cartesian);
-                        envelope = cartesianProductFiller.fill(envelope, parsedDims);
-                    }
+            // 2.5b Two-Pass: 笛卡爾積填充（補齊缺少的條件組合）
+            if (parsedDims.estimatedCartesian() > 1) {
+                int ruleCount = envelope.getRule().getRules().size();
+                int cartesian = parsedDims.estimatedCartesian();
+                if (ruleCount < cartesian) {
+                    log.info("Two-Pass: rules={} < cartesian={}，啟動笛卡爾積填充", ruleCount, cartesian);
+                    envelope = cartesianProductFiller.fill(envelope, parsedDims);
                 }
             }
-        } finally {
-            DescriptionDimensionParser.clearCurrentDims();
         }
 
         // 3. 欄位白名單檢查
@@ -370,7 +391,7 @@ public class DecisionTableGenerator implements RuleGenerator {
     /**
      * 根據輸入內容判斷模式，回傳對應的 RuleEnvelope。
      */
-    private RuleEnvelope resolveEnvelope(String description, String mode) {
+    private RuleEnvelope resolveEnvelope(String description, String mode, LlmGenerationTrace trace) {
         JsonNode parsed = tryParseJson(description);
 
         if (parsed != null && isFullEnvelope(parsed)) {
@@ -383,7 +404,7 @@ public class DecisionTableGenerator implements RuleGenerator {
             return wrapRuleBody(parsed);
         } else {
             // 模式 B：純自然語言 — 根據 mode 決定策略
-            return resolveByMode(description, mode);
+            return resolveByMode(description, mode, trace);
         }
     }
 
@@ -396,7 +417,7 @@ public class DecisionTableGenerator implements RuleGenerator {
      * normal: LLM 優先（≤15s），LLM 失敗 fallback offline
      * deep: LLM 優先（≤30s），LLM 失敗 fallback offline
      */
-    private RuleEnvelope resolveByMode(String description, String mode) {
+    private RuleEnvelope resolveByMode(String description, String mode, LlmGenerationTrace trace) {
         switch (mode) {
             case "fast" -> {
                 // fast: offline 優先（快速回應）
@@ -408,7 +429,7 @@ public class DecisionTableGenerator implements RuleGenerator {
                 // offline 沒匹配到，才呼叫 LLM
                 if (llmProvider != null && llmProvider.isAvailable()) {
                     log.info("mode=fast | 離線無匹配，呼叫 LLM");
-                    return generateViaLlm(description, mode);
+                    return generateViaLlm(description, mode, trace);
                 }
                 return tryOfflineThenStub(description);
             }
@@ -416,7 +437,7 @@ public class DecisionTableGenerator implements RuleGenerator {
                 // deep: LLM 優先 + Self-Repair
                 if (llmProvider != null && llmProvider.isAvailable()) {
                     log.info("mode=deep | 呼叫 LLM（深度模式）");
-                    RuleEnvelope result = generateViaLlm(description, mode);
+                    RuleEnvelope result = generateViaLlm(description, mode, trace);
                     if (hasRules(result)) {
                         return result;
                     }
@@ -428,7 +449,7 @@ public class DecisionTableGenerator implements RuleGenerator {
                 // normal: LLM 優先
                 if (llmProvider != null && llmProvider.isAvailable()) {
                     log.info("mode=normal | 呼叫 LLM");
-                    RuleEnvelope result = generateViaLlm(description, mode);
+                    RuleEnvelope result = generateViaLlm(description, mode, trace);
                     if (hasRules(result)) {
                         return result;
                     }
@@ -535,8 +556,14 @@ public class DecisionTableGenerator implements RuleGenerator {
     // 模式 B-1：呼叫 LLM 生成
     // ================================================================
 
-    private RuleEnvelope generateViaLlm(String description, String mode) {
+    private RuleEnvelope generateViaLlm(String description, String mode, LlmGenerationTrace trace) {
         try {
+            // 只有採預解析補償的 provider（本地小模型）才啟用後續的維度擴展 / 笛卡爾積填充。
+            // parse 是純函式（regex，典型 <5ms），與 provider 內部那次各自獨立 ——
+            // 這正是 PreflightService / SpecLintService 既有的做法，避免共享可變狀態。
+            if (llmProvider.usesDimensionPreparse()) {
+                trace.setDimensions(dimensionParser.parse(description));
+            }
             String jsonStr = llmProvider.generateRuleJson(description, mode);
             if (jsonStr == null || jsonStr.isBlank()) {
                 log.warn("LLM 回傳空結果，嘗試離線匹配");
