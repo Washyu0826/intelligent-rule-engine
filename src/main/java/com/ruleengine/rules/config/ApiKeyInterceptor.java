@@ -51,7 +51,12 @@ public class ApiKeyInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        if (!providedKey.equals(expectedApiKey)) {
+        // 常數時間比較（資安收緊④）：String.equals 首字元不符即返回，
+        // 理論上可由回應時間逐字元推測 key（timing attack）。
+        // MessageDigest.isEqual 自 JDK6u17 起保證恆定時間。
+        if (!java.security.MessageDigest.isEqual(
+                providedKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                expectedApiKey.getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
             log.warn("API Key 認證失敗：無效的 key | uri={} | ip={}",
                     uri, request.getRemoteAddr());
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);

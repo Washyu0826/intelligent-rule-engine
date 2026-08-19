@@ -24,7 +24,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "rules.security.jwt.mode=enforce")
+@TestPropertySource(properties = {
+        "rules.security.jwt.mode=enforce",
+        // SecurityStartupCheck 禁止「enforce + dev 預設 secret」（錯誤#7：新防線正確擋下了
+        // 本測試原設定）—— enforce 測試必須配一把非預設的合法 secret，與 prod 的要求一致
+        "rules.security.jwt.secret=test-only-enforce-secret-0123456789abcdef"
+})
 @DisplayName("JWT 認證（enforce 模式 = prod 行為）")
 class JwtEnforceModeTest {
 

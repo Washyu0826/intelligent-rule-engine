@@ -28,6 +28,11 @@ spring:
     web-application-type: servlet
 
 rules:
+  security:
+    login:
+      # 全套件上百個測試共享一個 RateLimiterRegistry —— 預設 10/min 會讓
+      # 打 login 的測試互撞 429。限流行為本身由 LoginRateLimitTest 用窄額度專測。
+      rate-limit-per-minute: 10000
   schema-version: "1.0.0"
   prompt-version: "p1.0.0"
   validation:

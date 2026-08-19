@@ -37,6 +37,21 @@ public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final LoginAttemptService loginAttempts;
+    private final com.ruleengine.rules.service.audit.AuditService auditService;
+    private final io.github.resilience4j.ratelimiter.RateLimiterRegistry rateLimiterRegistry;
+
+    /**
+     * 顯式限流而非 @RateLimiter 註解 —— 真機驗證發現註解 AOP 未生效
+     * （12 次連續登入無一 429）。安全關鍵路徑不留魔法：手動 acquirePermission，
+     * 行為看得見、測得到。（既有 /tools 端點的註解式限流是否同病，記入 backlog 查證。）
+     */
+    private io.github.resilience4j.ratelimiter.RateLimiter loginLimiter() {
+        // 必須雙參指名 config：Registry.of(map) 的 map 是「config 目錄」，
+        // 單參 rateLimiter("login") 會用 ofDefaults()（50 permits/500ns = 形同無限流）——
+        // 這正是專案既有 /tools 限流從未觸發過的根因（記 backlog 修復）
+        return rateLimiterRegistry.rateLimiter("login", "login");
+    }
 
     public record LoginRequest(@NotBlank String username, @NotBlank String password) {}
 
@@ -45,19 +60,44 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest request) {
+        // 全域限流（password spraying 防線）：先於一切檢查 —— 超額直接 429
+        if (!loginLimiter().acquirePermission()) {
+            log.warn("LOGIN RATE-LIMITED | user={}", request.username());
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", "60")
+                    .body(Map.of("error", "TOO_MANY_REQUESTS", "message", "登入嘗試過於頻繁，請稍後再試"));
+        }
+        // 資安收緊②：鎖定中的帳號直接拒絕，連 BCrypt 都不跑（省掉爆破時的 CPU 放大）。
+        // 回應與密碼錯完全相同 —— 鎖定狀態本身也是可被枚舉的資訊。
+        if (loginAttempts.isLocked(request.username())) {
+            log.warn("LOGIN LOCKED | user={} | 鎖定期間的嘗試被拒", request.username());
+            auditService.recordEvent("LOGIN", request.username(), "帳號鎖定期間嘗試登入", false);
+            return unauthorized();
+        }
         try {
             Authentication auth = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+            loginAttempts.recordSuccess(request.username());
             JwtService.IssuedToken issued = jwtService.issue(auth);
             log.info("LOGIN OK | user={} | roles={}", issued.username(), issued.roles());
+            // 資安收緊⑥：登入是資安事件，進稽核表（落庫、重啟不失），不只進 log
+            auditService.recordEvent("LOGIN", issued.username(), "登入成功", true);
             return ResponseEntity.ok(new LoginResponse(
                     issued.token(), "Bearer", issued.expiresAt(), issued.username(), issued.roles()));
         } catch (AuthenticationException e) {
-            // 統一文案防帳號枚舉；細節只進 server log
-            log.warn("LOGIN FAIL | user={} | reason={}", request.username(), e.getClass().getSimpleName());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "UNAUTHORIZED", "message", "帳號或密碼錯誤"));
+            boolean nowLocked = loginAttempts.recordFailure(request.username());
+            log.warn("LOGIN FAIL | user={} | reason={}{}", request.username(),
+                    e.getClass().getSimpleName(), nowLocked ? " | 已觸發鎖定" : "");
+            auditService.recordEvent("LOGIN", request.username(),
+                    nowLocked ? "登入失敗（觸發鎖定）" : "登入失敗", false);
+            return unauthorized();
         }
+    }
+
+    private ResponseEntity<?> unauthorized() {
+        // 統一文案防帳號枚舉；細節只進 server log 與稽核表
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("error", "UNAUTHORIZED", "message", "帳號或密碼錯誤"));
     }
 
     /**

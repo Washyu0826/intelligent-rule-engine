@@ -135,7 +135,13 @@ public class SecurityConfig {
                             "/demo.html", "/favicon.ico").permitAll()
                     .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                     // 驗證錨點：從第一天就強制，enforce 行為在 permissive 期也可被驗證
-                    .requestMatchers("/auth/me").authenticated();
+                    .requestMatchers("/auth/me").authenticated()
+                    // 資安收緊①：/engine/** 是「規則的營運」寫入面，新端點無相容包袱 ——
+                    // 不分 mode 一律要身分（permissive 只保護「既有」端點的過渡）
+                    .requestMatchers("/engine/**").authenticated()
+                    // 資安收緊⑤：actuator 除 health 外（metrics/prometheus 洩漏內部拓撲與
+                    // 流量特徵）需要 ADMIN；生產另有網路層隔離，這是 app 層的縱深
+                    .requestMatchers("/actuator/**").hasRole("ADMIN");
                 if (enforce) {
                     auth.anyRequest().authenticated();
                 } else {

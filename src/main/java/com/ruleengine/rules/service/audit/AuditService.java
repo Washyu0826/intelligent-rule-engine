@@ -84,6 +84,22 @@ public class AuditService {
     }
 
     /**
+     * 記錄一般事件（資安收緊⑥：登入成功/失敗等安全事件進稽核表，不只進 log）。
+     * 與規則操作不同，安全事件沒有 envelope/版本，只有 operation + 歸因 + 結果。
+     */
+    public void recordEvent(String operation, String userId, String reason, boolean success) {
+        AuditLog logEntry = AuditLog.builder()
+                .logId(logIdCounter.getAndIncrement())
+                .timestamp(LocalDateTime.now())
+                .operation(operation)
+                .userId(userId != null ? userId : "unknown")
+                .reason(reason)
+                .success(success)
+                .build();
+        auditRepository.save(logEntry);
+    }
+
+    /**
      * 記錄失敗操作。
      */
     public void recordFailure(String operation, String userId, String ruleType, String errorMessage) {

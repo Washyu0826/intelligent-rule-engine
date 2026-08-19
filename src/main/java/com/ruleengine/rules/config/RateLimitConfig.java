@@ -18,6 +18,9 @@ import java.time.Duration;
 @Configuration
 public class RateLimitConfig {
 
+    @org.springframework.beans.factory.annotation.Value("${rules.security.login.rate-limit-per-minute:10}")
+    private int loginLimitPerMinute;
+
     @Bean
     public RateLimiterRegistry rateLimiterRegistry() {
         // LLM 生成限流：每分鐘 10 次
@@ -42,11 +45,22 @@ public class RateLimitConfig {
                 .timeoutDuration(Duration.ZERO)
                 .build();
 
+        // 登入全域限流（資安收緊②的第二層）：擋 password spraying —— 
+        // 帳號級鎖定（LoginAttemptService）擋單帳號爆破，這裡擋「換帳號名狂試」。
+        // 預設 10 次/分對真人綽綽有餘（登入是低頻操作），對腳本是硬牆。
+        // 可配置：測試環境放寬（大量測試共享一個 registry），限流專屬測試再收窄。
+        RateLimiterConfig loginConfig = RateLimiterConfig.custom()
+                .limitForPeriod(loginLimitPerMinute)
+                .limitRefreshPeriod(Duration.ofMinutes(1))
+                .timeoutDuration(Duration.ZERO)
+                .build();
+
         return RateLimiterRegistry.of(
                 java.util.Map.of(
                         "generate", generateConfig,
                         "validate", validateConfig,
-                        "diff", diffConfig
+                        "diff", diffConfig,
+                        "login", loginConfig
                 )
         );
     }
