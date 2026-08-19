@@ -82,6 +82,23 @@ public class RuleVersionEntity {
     @Column(name = "created_by", nullable = false, length = 120)
     private String createdBy;
 
+    // ── 審核工作流（V4；maker-checker 可歸因性）──
+
+    @Column(name = "submitted_by", length = 120)
+    private String submittedBy;
+
+    @Column(name = "submitted_at")
+    private OffsetDateTime submittedAt;
+
+    @Column(name = "reviewed_by", length = 120)
+    private String reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private OffsetDateTime reviewedAt;
+
+    @Column(name = "review_comment", columnDefinition = "text")
+    private String reviewComment;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

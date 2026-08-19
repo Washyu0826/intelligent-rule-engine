@@ -139,6 +139,8 @@ public class SecurityConfig {
                     // 資安收緊①：/engine/** 是「規則的營運」寫入面，新端點無相容包袱 ——
                     // 不分 mode 一律要身分（permissive 只保護「既有」端點的過渡）
                     .requestMatchers("/engine/**").authenticated()
+                    // /rules/** 同理（P2-S4 審核工作流）—— 角色細分在方法層 @PreAuthorize
+                    .requestMatchers("/rules/**").authenticated()
                     // 資安收緊⑤：actuator 除 health 外（metrics/prometheus 洩漏內部拓撲與
                     // 流量特徵）需要 ADMIN；生產另有網路層隔離，這是 app 層的縱深
                     .requestMatchers("/actuator/**").hasRole("ADMIN");

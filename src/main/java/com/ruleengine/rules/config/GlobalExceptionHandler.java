@@ -112,6 +112,20 @@ public class GlobalExceptionHandler {
                 "請檢查輸入參數是否正確"));
     }
 
+    /**
+     * 方法層授權失敗（@PreAuthorize）→ 403。
+     * 錯誤#9：AccessDeniedException 從 controller 方法拋出會先被本 advice 的萬用
+     * Exception handler 攔到變 500 —— security 的例外必須有專屬出口。
+     */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorBody(
+                "FORBIDDEN",
+                "權限不足：此操作需要的角色與你的帳號不符",
+                "請確認登入帳號的角色（制單=MAKER / 審核=CHECKER / 管理=ADMIN）"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneral(Exception e) {
         // 完整 stack trace 進 server log；對外只回固定文案避免洩漏實作細節
