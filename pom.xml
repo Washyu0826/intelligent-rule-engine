@@ -22,7 +22,9 @@
     </description>
 
     <properties>
-        <java.version>17</java.version>
+        <java.version>21</java.version>
+        <!-- BOM 給的 1.20.4 對 Docker Desktop 29.x named pipe 回 400（docker-java 相容性），升版修復 -->
+        <testcontainers.version>1.21.3</testcontainers.version>
         <spring-ai.version>1.0.1</spring-ai.version>
     </properties>
 
@@ -39,6 +41,69 @@
     </dependencyManagement>
 
     <dependencies>
+        <!-- ==================== -->
+        <!-- Persistence (P1-S2)  -->
+        <!-- ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <!-- Schema 由 Flyway 版本化管理；Hibernate 僅 validate（見 application.yml 註解） -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <!-- Flyway 10+ 把各資料庫方言拆成獨立模組，缺這個對 PG 會直接報 unsupported -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 測試分兩層：單元/切片測試用 H2（快），migration/JSONB 整合測試用 Testcontainers 跑真 PG -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- ==================== -->
+        <!-- Security (P1-S4)     -->
+        <!-- ==================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <!-- 自發 JWT 的官方路線：JwtEncoder 簽發 + JwtDecoder/BearerTokenAuthenticationFilter 驗證，
+             不手寫 token filter（避免 alg confusion / 漏驗過期這類手工實作常見漏洞） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
         <!-- ==================== -->
         <!-- Spring Boot Core     -->
         <!-- ==================== -->

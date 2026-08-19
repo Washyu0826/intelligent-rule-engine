@@ -6,7 +6,7 @@
 # Stage 3: Runtime (JRE only)
 # ============================================================
 
-FROM maven:3.9-eclipse-temurin-17-alpine AS backend-build
+FROM maven:3.9-eclipse-temurin-21-alpine AS backend-build
 WORKDIR /app
 
 # Cache Maven dependencies.
@@ -25,7 +25,7 @@ RUN npm ci
 COPY frontend-src/frontend/ ./
 RUN npm run build
 
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM eclipse-temurin:21-jre-alpine AS runtime
 
 LABEL maintainer="Group Rules Team"
 LABEL description="Rules MCP Server"
