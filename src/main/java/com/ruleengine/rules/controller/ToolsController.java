@@ -163,8 +163,13 @@ public class ToolsController {
     }
 
     /**
-     * v2.2.0: SSE Streaming 生成 — 即時回傳進度事件。
-     * 事件類型：step（階段進度）、token（LLM token）、result（最終結果）、error
+     * v2.2.0: SSE <b>進度回報 + 最終結果</b>（review 修復輪更正文案）。
+     *
+     * <p>工程事實：這不是 token 級串流 —— generate 階段呼叫的是同步的
+     * {@code generateFull()}，LLM 生成期間無 token 事件；step 事件是「任務進度
+     * 狀態機」（其中 validate/analyze 兩步是 generateFull 完成後的補發）。
+     * 真打字機效果需 ResponseBodyEmitter 對接 OllamaService.generateRuleJsonStreaming()
+     * （已實作、未接線）—— 記 backlog，對外文件一律稱「進度回報」不稱「串流生成」。</p>
      */
     @PostMapping(value = "/generate/stream", produces = org.springframework.http.MediaType.TEXT_EVENT_STREAM_VALUE)
     public org.springframework.web.servlet.mvc.method.annotation.SseEmitter generateStream(

@@ -28,6 +28,11 @@ spring:
     web-application-type: servlet
 
 rules:
+  rate-limit:
+    # 限流如今真的生效（review 修復輪）—— 全套件共享 registry，放寬避免測試互撞；
+    # 觸發行為由 ToolsRateLimitTest / LoginRateLimitTest 用窄額度專測
+    generate-per-minute: 10000
+    diff-per-minute: 10000
   security:
     login:
       # 全套件上百個測試共享一個 RateLimiterRegistry —— 預設 10/min 會讓

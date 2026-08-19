@@ -22,7 +22,10 @@ import java.util.Map;
 @Slf4j
 public class ClaudeService implements LlmProvider {
 
-    private static final String API_URL = "https://api.anthropic.com/v1/messages";
+    // review 修復輪：原為寫死常數 —— WireMock 攔不到、Claude 路徑完全不可整合測試。
+    // 改可配置：正式環境不設定即用官方端點，測試指向 mock。
+    @Value("${rules.llm.claude.base-url:https://api.anthropic.com/v1/messages}")
+    private String apiUrl;
     private static final String API_VERSION = "2023-06-01";
     /** Level A: JSON parse retry 最大次數 */
     private static final int MAX_RETRY = 3;
@@ -203,7 +206,7 @@ public class ClaudeService implements LlmProvider {
             long startMs = System.currentTimeMillis();
 
             ResponseEntity<String> response = restTemplate.exchange(
-                    API_URL, HttpMethod.POST, entity, String.class);
+                    apiUrl, HttpMethod.POST, entity, String.class);
 
             long durationMs = System.currentTimeMillis() - startMs;
             log.info("Claude API 回應 | status={} | durationMs={} | attempt={}",

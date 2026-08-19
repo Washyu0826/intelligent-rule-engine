@@ -34,4 +34,17 @@ public interface RuleGenerator {
     default JsonNode generate(String description, List<String> allowedFields, String mode) {
         return generate(description, allowedFields);
     }
+
+    /**
+     * 從自然語言描述生成規則 payload JSON（指定生成模式與 LLM provider）。
+     *
+     * <p>review 修復輪：修復「前端選了 provider、服務層丟棄」的參數斷層 ——
+     * 介面用 default 方法向後相容（不支援 per-request provider 的 generator
+     * 自動忽略該參數，如 ScoreCardGenerator stub）。</p>
+     *
+     * @param providerName claude / gemini / ollama / openai；null 或未知名稱用系統預設
+     */
+    default JsonNode generate(String description, List<String> allowedFields, String mode, String providerName) {
+        return generate(description, allowedFields, mode);
+    }
 }

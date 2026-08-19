@@ -21,11 +21,17 @@ public class RateLimitConfig {
     @org.springframework.beans.factory.annotation.Value("${rules.security.login.rate-limit-per-minute:10}")
     private int loginLimitPerMinute;
 
+    @org.springframework.beans.factory.annotation.Value("${rules.rate-limit.generate-per-minute:10}")
+    private int generateLimitPerMinute;
+
+    @org.springframework.beans.factory.annotation.Value("${rules.rate-limit.diff-per-minute:60}")
+    private int diffLimitPerMinute;
+
     @Bean
     public RateLimiterRegistry rateLimiterRegistry() {
-        // LLM 生成限流：每分鐘 10 次
+        // LLM 生成限流：每分鐘 10 次（可配置：測試環境放寬避免互撞，見 test application.yml）
         RateLimiterConfig generateConfig = RateLimiterConfig.custom()
-                .limitForPeriod(10)
+                .limitForPeriod(generateLimitPerMinute)
                 .limitRefreshPeriod(Duration.ofMinutes(1))
                 .timeoutDuration(Duration.ofSeconds(5))
                 .build();
@@ -40,7 +46,7 @@ public class RateLimitConfig {
         // diff / tree-paths 等純符號 CPU-bound 端點：每分鐘 60 次、不等待（額滿即時 429）。
         // 單次成本已由各服務的節點/取樣上限約束；此限流為對抗高頻濫用的防禦縱深。
         RateLimiterConfig diffConfig = RateLimiterConfig.custom()
-                .limitForPeriod(60)
+                .limitForPeriod(diffLimitPerMinute)
                 .limitRefreshPeriod(Duration.ofMinutes(1))
                 .timeoutDuration(Duration.ZERO)
                 .build();
@@ -55,7 +61,7 @@ public class RateLimitConfig {
                 .timeoutDuration(Duration.ZERO)
                 .build();
 
-        return RateLimiterRegistry.of(
+        RateLimiterRegistry registry = RateLimiterRegistry.of(
                 java.util.Map.of(
                         "generate", generateConfig,
                         "validate", validateConfig,
@@ -63,6 +69,16 @@ public class RateLimitConfig {
                         "login", loginConfig
                 )
         );
+        // review 修復輪的關鍵：Registry.of(map) 只登記「config 目錄」，不建 instance。
+        // @RateLimiter 註解 aspect 與任何單參 rateLimiter(name) 查無 instance 時會用
+        // ofDefaults()（50 permits/500ns = 形同無限流）—— 這就是 /tools 限流
+        // 自 v3.0 以來從未真正觸發過的根因。預先以「同名 config」實例化，
+        // 之後所有單參查詢都命中這些既存 instance，限流才真的存在。
+        registry.rateLimiter("generate", "generate");
+        registry.rateLimiter("validate", "validate");
+        registry.rateLimiter("diff", "diff");
+        registry.rateLimiter("login", "login");
+        return registry;
     }
 
     @Bean

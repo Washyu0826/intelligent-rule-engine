@@ -14,7 +14,7 @@ Phase 1（v1.0.0）交付了「Generate → Validate 最小閉環」的承諾，
 
 | 類別 | 功能 |
 |------|------|
-| **REST API（~28 端點）** | 生成/分析：`/tools/generate`（含 SSE streaming）、`/validate`、`/recommend`、`/analyze`、`/test-run`、`/convert`、`/optimize`、`/optimize/v2`、`/suggest`、`/preflight`、`/lookup`、`/scenario-expand`、`/evaluate`、`/explain`、`/narrate`、`/providers`、`/audit`、`/audit/stats`、`/glossary*`、`/health`；**比對**：`/diff-tree`、`/diff-table`、`/diff-rules`；**樹視覺化**：`/tree-paths`；**Group 整合**：`/export/group-json`、`/export/group-xlsx`、`/execute` |
+| **REST API（~28 端點）** | 生成/分析：`/tools/generate`（含 SSE 進度回報；非 token 級串流）、`/validate`、`/recommend`、`/analyze`、`/test-run`、`/convert`、`/optimize`、`/optimize/v2`、`/suggest`、`/preflight`、`/lookup`、`/scenario-expand`、`/evaluate`、`/explain`、`/narrate`、`/providers`、`/audit`、`/audit/stats`、`/glossary*`、`/health`；**比對**：`/diff-tree`、`/diff-table`、`/diff-rules`；**樹視覺化**：`/tree-paths`；**Group 整合**：`/export/group-json`、`/export/group-xlsx`、`/execute` |
 | **MCP Tools（11 個）** | generate / validate / recommend / analyze / test-run / suggest_input_completeness / lookup_rule / convert / optimize / narrate_rule_overview / optimize_rule_tree_v2 |
 | **LLM Provider（4 家）** | Claude / Gemini / OpenAI / Ollama 運行時切換；三層 fallback（LLM → offline scenario → stub）；Claude prompt caching；Level A / B self-repair |
 | **規則型態** | DecisionTable（FIRST / MULTI）、DecisionTree（含 v2 sparsity 6-pass 優化）、雙向轉換；ScoreCard Validator stub |

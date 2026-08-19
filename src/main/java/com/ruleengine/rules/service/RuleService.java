@@ -113,7 +113,10 @@ public class RuleService {
                             "型態 \"" + type.getCode() + "\" 的 Generator 尚未註冊"));
 
             // Step 3: 生成（帶模式參數）
-            JsonNode resultNode = generator.generate(request.getDescription(), request.getAllowedFields(), request.getMode());
+            // review 修復輪：provider 終於傳下去了 —— 之前 request.getProvider() 在這裡被丟棄，
+            // UI 的模型下拉選單形同虛設（永遠跑預設 provider）
+            JsonNode resultNode = generator.generate(request.getDescription(), request.getAllowedFields(),
+                    request.getMode(), request.getProvider());
             RuleEnvelope envelope = objectMapper.treeToValue(resultNode, RuleEnvelope.class);
 
             // Step 4: 確保 metadata

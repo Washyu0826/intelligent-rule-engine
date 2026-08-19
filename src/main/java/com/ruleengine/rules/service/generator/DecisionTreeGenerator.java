@@ -56,8 +56,11 @@ public class DecisionTreeGenerator implements RuleGenerator {
         this.tableToTreeConverter = converter;
     }
 
+    private com.ruleengine.rules.service.llm.LlmProviderRegistry llmProviderRegistry;
+
     @Autowired(required = false)
     public void setLlmProvider(com.ruleengine.rules.service.llm.LlmProviderRegistry registry) {
+        this.llmProviderRegistry = registry;   // per-request provider 解析用（review 修復輪）
         this.llmProvider = registry.getDefault();
     }
 
@@ -76,7 +79,13 @@ public class DecisionTreeGenerator implements RuleGenerator {
     @Value("${rules.llm.self-repair:false}")
     private boolean selfRepairEnabled;
 
-    private String currentMode = "normal";
+    /**
+     * 單次呼叫的生成上下文（review 修復輪）。
+     * 取代原本的 currentMode 可變實例欄位 —— 單例 generator 上的可變欄位
+     * 在併發請求下互相覆寫（fast/deep 撞在一起），與 ThreadLocal 污染同族。
+     * provider 同時修復「前端選了模型、後端永遠跑預設」的參數斷層。
+     */
+    private record GenCtx(String mode, LlmProvider provider) {}
 
     @Override
     public RuleType supportedType() {
@@ -85,21 +94,37 @@ public class DecisionTreeGenerator implements RuleGenerator {
 
     @Override
     public JsonNode generate(String description, List<String> allowedFields, String mode) {
-        this.currentMode = mode != null ? mode : "normal";
-        return generate(description, allowedFields);
+        return generate(description, allowedFields, mode, null);
     }
 
     @Override
     public JsonNode generate(String description, List<String> allowedFields) {
+        return generate(description, allowedFields, "normal", null);
+    }
+
+    @Override
+    public JsonNode generate(String description, List<String> allowedFields, String mode, String providerName) {
+        GenCtx ctx = new GenCtx(mode != null ? mode : "normal", resolveProvider(providerName));
+        return generateInternal(description, allowedFields, ctx);
+    }
+
+    /** 依名稱解析 provider；null/未知回預設（與 DecisionTableGenerator 同語意）。 */
+    private LlmProvider resolveProvider(String providerName) {
+        if (llmProviderRegistry == null || providerName == null || providerName.isBlank()) return llmProvider;
+        LlmProvider p = llmProviderRegistry.getByName(providerName);
+        return p != null ? p : llmProvider;
+    }
+
+    private JsonNode generateInternal(String description, List<String> allowedFields, GenCtx ctx) {
         log.info("DecisionTreeGenerator.generate: 開始（輸入長度={}, mode={}）",
-                description != null ? description.length() : 0, currentMode);
+                description != null ? description.length() : 0, ctx.mode());
 
         if (description == null || description.isBlank()) {
             return objectMapper.valueToTree(buildStubEnvelope("輸入為空"));
         }
 
         // 1. 模式判斷 + 解析
-        RuleEnvelope envelope = resolveEnvelope(description);
+        RuleEnvelope envelope = resolveEnvelope(description, ctx);
 
         // 2. 正規化
         treeNormalizer.normalize(envelope, schemaVersion, promptVersion);
@@ -113,8 +138,8 @@ public class DecisionTreeGenerator implements RuleGenerator {
         treeEvaluationComputer.computeEvaluation(envelope);
 
         // 5. Self-Repair Loop（deep 模式）
-        if ("deep".equals(currentMode) && llmProvider != null && hasTree(envelope) && needsRepair(envelope)) {
-            envelope = selfRepairLoop(description, envelope);
+        if ("deep".equals(ctx.mode()) && ctx.provider() != null && hasTree(envelope) && needsRepair(envelope)) {
+            envelope = selfRepairLoop(description, envelope, ctx);
         }
 
         log.info("DecisionTreeGenerator.generate: 完成，leafCount={}",
@@ -127,7 +152,7 @@ public class DecisionTreeGenerator implements RuleGenerator {
     // Self-Repair Loop
     // ================================================================
 
-    private RuleEnvelope selfRepairLoop(String originalDescription, RuleEnvelope envelope) {
+    private RuleEnvelope selfRepairLoop(String originalDescription, RuleEnvelope envelope, GenCtx ctx) {
         for (int round = 1; round <= maxRepairRounds; round++) {
             String issues = collectIssues(envelope);
             if (issues.isEmpty()) {
@@ -139,7 +164,7 @@ public class DecisionTreeGenerator implements RuleGenerator {
 
             try {
                 String currentJson = objectMapper.writeValueAsString(envelope);
-                String repairedJson = llmProvider.repairRuleJson(originalDescription, currentJson, issues);
+                String repairedJson = ctx.provider().repairRuleJson(originalDescription, currentJson, issues);
                 if (repairedJson == null || repairedJson.isBlank()) {
                     return envelope;
                 }
@@ -220,7 +245,7 @@ public class DecisionTreeGenerator implements RuleGenerator {
     // 模式判斷與解析
     // ================================================================
 
-    private RuleEnvelope resolveEnvelope(String description) {
+    private RuleEnvelope resolveEnvelope(String description, GenCtx ctx) {
         JsonNode parsed = tryParseJson(description);
 
         if (parsed != null && isFullTreeEnvelope(parsed)) {
@@ -230,35 +255,35 @@ public class DecisionTreeGenerator implements RuleGenerator {
             log.info("偵測到 tree rule body JSON，包裝為 RuleEnvelope");
             return wrapTreeBody(parsed);
         } else {
-            return resolveByMode(description);
+            return resolveByMode(description, ctx);
         }
     }
 
-    private RuleEnvelope resolveByMode(String description) {
-        switch (currentMode) {
+    private RuleEnvelope resolveByMode(String description, GenCtx ctx) {
+        switch (ctx.mode()) {
             case "fast" -> {
                 log.info("mode=fast | 優先嘗試離線匹配（DecisionTree）");
                 RuleEnvelope offline = tryOfflineOnly(description);
                 if (offline != null && hasTree(offline)) {
                     return offline;
                 }
-                if (llmProvider != null && llmProvider.isAvailable()) {
-                    return generateViaLlm(description);
+                if (ctx.provider() != null && ctx.provider().isAvailable()) {
+                    return generateViaLlm(description, ctx);
                 }
                 return tryOfflineThenStub(description);
             }
             case "deep" -> {
-                if (llmProvider != null && llmProvider.isAvailable()) {
+                if (ctx.provider() != null && ctx.provider().isAvailable()) {
                     log.info("mode=deep | 呼叫 LLM（DecisionTree 深度模式）");
-                    RuleEnvelope result = generateViaLlm(description);
+                    RuleEnvelope result = generateViaLlm(description, ctx);
                     if (hasTree(result)) return result;
                 }
                 return tryOfflineThenStub(description);
             }
             default -> {
-                if (llmProvider != null && llmProvider.isAvailable()) {
+                if (ctx.provider() != null && ctx.provider().isAvailable()) {
                     log.info("mode=normal | 呼叫 LLM（DecisionTree）");
-                    RuleEnvelope result = generateViaLlm(description);
+                    RuleEnvelope result = generateViaLlm(description, ctx);
                     if (hasTree(result)) return result;
                 }
                 return tryOfflineThenStub(description);
@@ -270,9 +295,9 @@ public class DecisionTreeGenerator implements RuleGenerator {
     // LLM 生成
     // ================================================================
 
-    private RuleEnvelope generateViaLlm(String description) {
+    private RuleEnvelope generateViaLlm(String description, GenCtx ctx) {
         try {
-            String jsonStr = llmProvider.generateRuleJson(description, currentMode, "DecisionTree");
+            String jsonStr = ctx.provider().generateRuleJson(description, ctx.mode(), "DecisionTree");
             if (jsonStr == null || jsonStr.isBlank()) {
                 return tryOfflineThenStub(description);
             }
