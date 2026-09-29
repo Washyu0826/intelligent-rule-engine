@@ -1,0 +1,77 @@
+# 測試設定 —— 以 profile 疊加（overlay）在 src/main/resources/application.yml 之上。
+#
+# 【為什麼不再叫 application.yml】
+# 同名檔案會在測試 classpath 上「整份遮蔽」main 的 application.yml，結果是
+# main 裡的設定在測試中完全不被載入 —— 形成一個沒有任何測試看得到的盲區。
+# spring.ai.mcp.server 整塊曾因為縮排錯誤被搬到 audit 底下（MCP server 身分與
+# instructions 全部失效）而三個月無人察覺，根因就是這個遮蔽。
+# 改成 application-test.yml 後：main 先載入 → 本檔只覆蓋測試需要不同的鍵，
+# main 的設定錯誤會在測試啟動時就暴露。結構層面另有 McpServerIdentityTest 釘死。
+#
+# 【profile 怎麼啟用】
+# 由 pom.xml 的 surefire systemPropertyVariables 統一設定 spring.profiles.active=test，
+# 所以測試類別不需要逐個加 @ActiveProfiles。
+# 單一測試類別要再細調，用 @TestPropertySource / @DynamicPropertySource（優先於本檔）。
+
+spring:
+  # ── 測試資料庫分兩層（P1-S2）──
+  #  1. 全體單元/整合測試：H2 in-memory（毫秒級啟動，不需要 Docker）
+  #  2. migration 與 JSONB 行為：PostgresMigrationTest 用 Testcontainers 跑真 PG
+  #     （@Testcontainers(disabledWithoutDocker=true)，本機沒開 Docker 自動跳過）
+  datasource:
+    url: jdbc:h2:mem:rulesdb;DB_CLOSE_DELAY=-1
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      # 測試用 entity 自動建 H2 schema；真 schema 正確性由 Testcontainers 那層把關
+      # （覆蓋 main 的 validate —— H2 上沒有 Flyway 建好的表可驗）
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    # migration SQL 是 PostgreSQL 方言（JSONB、IDENTITY），不在 H2 上跑
+    enabled: false
+  ai:
+    mcp:
+      server:
+        # 測試不起 MCP 傳輸層；需要 server bean 的測試自行以
+        # @SpringBootTest(properties = "spring.ai.mcp.server.enabled=true") 打開
+        enabled: false
+  main:
+    web-application-type: servlet
+
+# main 設 jpa（稽核落 PostgreSQL）；測試一律走 in-memory 實作。
+# 需要驗 JPA 稽核的切片測試自行覆蓋（JpaAuditRepositoryTest 已用
+# @TestPropertySource(properties = "audit.repository=jpa")）。
+audit:
+  repository: in-memory
+
+rules:
+  rate-limit:
+    # 限流如今真的生效（review 修復輪）—— 全套件共享 registry，放寬避免測試互撞；
+    # 觸發行為由 ToolsRateLimitTest / LoginRateLimitTest 用窄額度專測
+    generate-per-minute: 10000
+    diff-per-minute: 10000
+  security:
+    login:
+      # 全套件上百個測試共享一個 RateLimiterRegistry —— 預設 10/min 會讓
+      # 打 login 的測試互撞 429。限流行為本身由 LoginRateLimitTest 用窄額度專測。
+      rate-limit-per-minute: 10000
+  schema-version: "1.0.0"
+  prompt-version: "p1.0.0"
+  validation:
+    max-tree-depth: 10
+    max-table-rows: 200
+    max-columns: 50
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+logging:
+  level:
+    # main 設 DEBUG（本機開發用）；測試全套件開 DEBUG 輸出量過大，
+    # 壓回 INFO —— 與本檔改為 overlay 之前的實際行為一致
+    com.ruleengine.rules: INFO

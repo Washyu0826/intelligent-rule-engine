@@ -230,6 +230,21 @@
 
     <build>
         <plugins>
+            <!-- 測試統一啟用 test profile。
+                 目的：讓 src/test/resources/application-test.yml 以「疊加」方式蓋在
+                 src/main/resources/application.yml 之上，而不是用同名 application.yml
+                 整份遮蔽 main 的設定 —— 那會讓 main 的設定成為零測試覆蓋的盲區
+                 （spring.ai.mcp.server 的縮排錯誤就是這樣藏了三個月）。
+                 設在這裡而不是逐個測試類別加 @ActiveProfiles：一處生效，不會有人漏加。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <spring.profiles.active>test</spring.profiles.active>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

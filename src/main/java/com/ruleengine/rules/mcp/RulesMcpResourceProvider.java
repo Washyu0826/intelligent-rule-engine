@@ -44,7 +44,8 @@ public class RulesMcpResourceProvider {
                         new McpSchema.Resource(
                                 DECISION_TABLE_EXAMPLE_URI,
                                 "decision-table-example",
-                                "Official DecisionTable RuleEnvelope example for the current phase.",
+                                "Official RuleEnvelope example for DecisionTable. "
+                                        + "For a DecisionTree example call the getRuleTypeExample tool with \"DecisionTree\".",
                                 JSON_MIME_TYPE,
                                 null
                         ),
@@ -57,7 +58,9 @@ public class RulesMcpResourceProvider {
                         new McpSchema.Resource(
                                 RULE_ENVELOPE_SCHEMA_URI,
                                 "rule-envelope-schema",
-                                "Schema guide for the RuleEnvelope contract used by DecisionTable generation.",
+                                "Schema guide for the RuleEnvelope contract used by DecisionTable generation. "
+                                        + "DecisionTree uses rule.root / branches instead of hitPolicy / rules "
+                                        + "and is not covered by this schema.",
                                 JSON_MIME_TYPE,
                                 null
                         ),

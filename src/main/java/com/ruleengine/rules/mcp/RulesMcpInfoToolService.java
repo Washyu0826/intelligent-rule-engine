@@ -41,8 +41,8 @@ public class RulesMcpInfoToolService {
             The server provides a business-facing rules governance and handoff workflow.
             RuleEnvelope is an engine-neutral intermediate model; downstream engines require exporter/adapter conversion.
             This phase keeps compatibility info tools and also exposes formal MCP resources.
-            Officially supported rule type in this phase: DecisionTable only.
-            DecisionTree and ScoreCard remain planned items for a later phase.
+            Officially supported rule types: DecisionTable and DecisionTree (convertible in both directions).
+            ScoreCard is a stub only and must not be used for formal output.
             """)
     public String getServerInfo() {
         log.info("MCP Info Tool: getServerInfo");
@@ -76,8 +76,10 @@ public class RulesMcpInfoToolService {
                     "RuleEnvelope is for review, validation, scenario analysis, and adapter handoff; it is not a target-engine deployment artifact by itself.",
                     "Preferred resources: rules://server-info, rules://examples/decision-table, and rules://schemas/*.",
                     "Response schemas are available for validate, analyze, recommend, and test-run MCP flows.",
-                    "DecisionTree and ScoreCard are intentionally excluded from formal support in this phase.",
-                    "DecisionTable is the only stable generation and validation path to rely on today."
+                    "ScoreCard is intentionally excluded from formal support; it is a stub type.",
+                    "DecisionTable and DecisionTree are both stable generation and validation paths.",
+                    "Rule approval and activation are not exposed as tools: this service uses maker-checker governance, "
+                            + "so approve / activate / retire must be performed by a human with CHECKER or ADMIN rights."
             ));
             info.put("errorCodes", Map.ofEntries(
                     Map.entry("MISSING_FIELD", "Required field is missing."),
@@ -122,11 +124,11 @@ public class RulesMcpInfoToolService {
 
     @Tool(description = """
             Return a RuleEnvelope JSON example for an officially supported rule type.
-            This phase only provides a formal example for DecisionTable.
-            DecisionTree and ScoreCard are intentionally reserved for a later phase.
+            Formal examples are available for DecisionTable and DecisionTree.
+            ScoreCard is a stub type and has no formal example.
             """)
     public String getRuleTypeExample(
-            @ToolParam(description = "Rule type. Officially supported in this phase: DecisionTable.") String ruleType
+            @ToolParam(description = "Rule type: DecisionTable or DecisionTree.") String ruleType
     ) {
         log.info("MCP Info Tool: getRuleTypeExample, type={}", ruleType);
 
@@ -152,7 +154,7 @@ public class RulesMcpInfoToolService {
             return objectMapper.writeValueAsString(Map.of(
                     "error", UNSUPPORTED_PHASE_ERROR,
                     "ruleType", ruleType,
-                    "message", "Only DecisionTable is officially supported in this phase."
+                    "message", "ScoreCard is a stub type. Officially supported: DecisionTable and DecisionTree."
             ));
         } catch (Exception e) {
             return toErrorJson(e.getMessage());

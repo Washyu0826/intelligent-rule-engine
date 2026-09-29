@@ -20,10 +20,6 @@ spring:
     enabled: true
     locations: classpath:db/migration
 
-# 稽核儲存層：jpa = 落 PostgreSQL（P1-S3）；in-memory = v3.12 舊行為（測試環境用它，
-# 見 src/test/resources/application.yml —— 該檔不設此鍵、matchIfMissing 讓 in-memory 接手）
-audit:
-  repository: jpa
   lifecycle:
     timeout-per-shutdown-phase: 30s
   web:
@@ -36,13 +32,27 @@ audit:
         name: rules-mcp-server
         version: 1.0.0
         type: SYNC
+        # 這段是給 MCP client（AI）看的使用說明 —— 它決定 AI 會不會正確選用工具。
+        # 內容過期等同給錯指示，改動功能範圍時務必同步（McpServerIdentityTest 釘住關鍵字）。
         instructions: >
-          Rules MCP Server 提供以 DecisionTable 為主的規則生成、推薦、驗證與分析服務。
-          本階段正式支援的規則型態只有 DecisionTable。
-          DecisionTree 與 ScoreCard 僅屬後續階段規劃，尚未正式對外承諾。
+          Rules MCP Server 把業務規格轉成 engine-neutral 的 RuleEnvelope JSON，
+          並提供驗證、幾何分析（覆蓋缺口 / 規則重疊）、型態轉換與樹優化。
+          正式支援的規則型態為 DecisionTable 與 DecisionTree（兩者可雙向轉換）；
+          ScoreCard 目前僅為 stub，不要用於正式輸出。
+          典型流程：generateRulePayload 產生規則 → validateRuleSchema 驗證 →
+          analyzeRulePayload 檢查覆蓋缺口與重疊 → 有問題則修正後重跑驗證。
+          規則的核准與生效不提供工具：本服務採 maker-checker 治理，
+          送審之後的核准、生效、退役必須由具備 CHECKER / ADMIN 身分的人在系統中操作。
         capabilities:
           tool: true
           resource: true
+
+# 稽核儲存層：jpa = 落 PostgreSQL（P1-S3）；in-memory = v3.12 舊行為
+# （測試環境用它：src/test/resources/application-test.yml 明確覆蓋為 in-memory）
+# 注意：這是頂層鍵，必須放在 spring 區塊之外 —— 曾因插在 spring 區塊中間而把
+# spring.ai / spring.web / spring.lifecycle 全部吃進 audit 底下（McpServerIdentityTest 釘住）
+audit:
+  repository: jpa
 
 # ==========================================
 # 版本管理（計畫書要求 schemaVersion / promptVersion 可追溯）

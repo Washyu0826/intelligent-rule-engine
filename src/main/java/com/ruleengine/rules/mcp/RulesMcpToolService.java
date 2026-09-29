@@ -210,7 +210,7 @@ public class RulesMcpToolService {
     public String validateRuleSchema(
             @ToolParam(description = "要驗證的 RuleEnvelope JSON 字串")
             String ruleJsonStr,
-            @ToolParam(description = "規則型態：本階段請使用 DecisionTable（選填，JSON 中有 ruleType 可不填）")
+            @ToolParam(description = "規則型態：DecisionTable 或 DecisionTree（選填，JSON 中有 ruleType 可不填）")
             String ruleType
     ) {
         log.info("MCP validate_rule_schema | ruleType={}", ruleType);
@@ -251,9 +251,9 @@ public class RulesMcpToolService {
             }
 
             注意：
-            - recommender 仍可能回傳 DecisionTree / ScoreCard 作為概念性建議
-            - 但本階段正式可生成與驗證的型態只有 DecisionTable
-            - 若要進入實際 generate 流程，請以 DecisionTable 為準
+            - 可正式生成與驗證的型態為 DecisionTable 與 DecisionTree
+            - recommender 仍可能回傳 ScoreCard 作為概念性建議，但該型態僅為 stub
+            - 若推薦結果為 ScoreCard，請改以 DecisionTable 進入 generate 流程
             """)
     public String recommendRuleType(
             @ToolParam(description = "自然語言規則描述")
@@ -290,7 +290,7 @@ public class RulesMcpToolService {
     public String analyzeRulePayload(
             @ToolParam(description = "要分析的 RuleEnvelope JSON 字串")
             String ruleJsonStr,
-            @ToolParam(description = "規則型態：本階段請使用 DecisionTable（選填，JSON 中有 ruleType 可不填）")
+            @ToolParam(description = "規則型態：DecisionTable 或 DecisionTree（選填，JSON 中有 ruleType 可不填）")
             String ruleType
     ) {
         log.info("MCP analyze_rule_payload | ruleType={}", ruleType);
