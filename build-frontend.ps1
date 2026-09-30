@@ -1,4 +1,4 @@
-# 重建前端並打包進 Spring Boot static —— 之後 `mvn package` 產出的單一 jar 啟動即服務完整 UI。
+﻿# 重建前端並打包進 Spring Boot static —— 之後 `mvn package` 產出的單一 jar 啟動即服務完整 UI。
 # 用法（在 repo 根目錄）：  .\build-frontend.ps1
 $ErrorActionPreference = 'Stop'
 $root = $PSScriptRoot

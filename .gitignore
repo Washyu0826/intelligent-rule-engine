@@ -19,3 +19,33 @@ demo_curl_out/
 *.log
 demo-start.ps1
 docs/面試*.md
+
+# ── 公開前分類：② 公司脈絡衍生物 / ③ 公司資料原件 —— 只留本地，不進 repo ──
+# （另有備份於 ../local-only/；歷史已以 filter-branch 抹除）
+MISSION.md
+PROJECT_PLAN.md
+QUESTIONS.md
+orchestrator.system.md
+DEMO_PLAN_3H.md
+WORK_LOG_architect.md
+WORK_LOG_impl.md
+WORK_LOG_orchestrator.md
+WORK_LOG_review.md
+WORK_LOG_test.md
+交付審查與優化建議_2026-06-05.md
+docs/mentor-demo-2026-05-13.md
+docs/mentor-demo-phase1.md
+docs/mentor-demo-script.md
+docs/mentor-report-v3.md
+docs/business-team-slides-draft.md
+docs/business-team-slides-formal.md
+docs/business-team-slides.pptx
+docs/business-team-report-prompt-improvement.md
+docs/business-engine-handoff-design.md
+docs/demo-bug-log-2026-05-08.md
+docs/demo-check-2026-05-08.md
+docs/worklog-2026-05-07.md
+docs/baseline-v3.13-on-ba-templates.md
+docs/v3.13-product-package-for-claude-web.md
+golden-tests/field-spec/expected.xlsx
+需求擴增/
