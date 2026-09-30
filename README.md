@@ -2,7 +2,7 @@
 
 **規則生成與建議服務** — 自然語言 → 標準化 RuleEnvelope JSON（支援 DecisionTable / DecisionTree）
 
-某金融集團 實習專案 | Washyu0826 | 技術團隊 | 需求方: 
+保險業實習作品 · 去識別化公開版 | Washyu0826
 
 > **目前版本：v3.16.0** · Backend 78 classes / 648+ tests / 0 failures · Frontend `tsc -b` + `vite build` 綠 · 詳見 [CHANGELOG](./CHANGELOG.md)
 
