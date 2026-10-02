@@ -67,7 +67,23 @@ jobs:
 
       - name: Test Docker health
         run: |
-          docker run -d --name test-container -p 8080:8080 rules-mcp-server:latest
-          sleep 15
-          curl -f http://localhost:8080/actuator/health || exit 1
-          docker stop test-container
+          # 預設 profile 需要 PostgreSQL（Flyway migration + JPA validate），
+          # 容器與 DB 同走 host 網路，連線字串用環境變數覆蓋（12-Factor）
+          docker run -d --name test-db --network host \
+            -e POSTGRES_DB=rules -e POSTGRES_USER=rules -e POSTGRES_PASSWORD=ci-only \
+            postgres:16-alpine
+          for i in $(seq 1 30); do
+            docker exec test-db pg_isready -U rules -d rules && break
+            sleep 2
+          done
+          docker run -d --name test-container --network host \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/rules \
+            -e SPRING_DATASOURCE_USERNAME=rules \
+            -e SPRING_DATASOURCE_PASSWORD=ci-only \
+            rules-mcp-server:latest
+          for i in $(seq 1 40); do
+            curl -sf http://localhost:8080/actuator/health && exit 0
+            sleep 3
+          done
+          docker logs test-container | tail -50
+          exit 1
