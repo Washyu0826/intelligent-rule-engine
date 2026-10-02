@@ -4,7 +4,7 @@
 
 *English: a pre-production "wind tunnel" for business rules. Chinese spec → generate → validate → draft → maker-checker review → simulated execution → trace & replay. Exposed to AI clients over MCP, with the approval boundary deliberately kept out of the tool surface.*
 
-個人專案，源自保險業規則治理的實際問題。Spring Boot 3.4 · Java 21 · Spring AI MCP · PostgreSQL · React 19
+保險業實習作品，源自規則治理的實際問題。Spring Boot 3.4 · Java 21 · Spring AI MCP · PostgreSQL · React 19
 
 ---
 
