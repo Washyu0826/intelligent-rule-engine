@@ -23,6 +23,17 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **工作台試算**：依規則 inputs 自動產生表單；草稿／送審版以 `/tools/execute` 模擬、不留軌跡，
   生效版以 `/engine/execute` 執行並顯示軌跡編號；顯示命中規則、輸出與耗時。
 
+- **兩步生成**（整段規格預設）：描述超過 120 字時先呼叫 `/tools/suggest` 偵測條件欄位與輸出欄位，
+  跳出「第 1 步／2」對話框讓使用者改名、改型別、補值域或跳過；確認後把欄位清單附在描述後再生成。
+- **檢核清單**：多重命中（MULTI）的決策表在工作台顯示為「若…→ 錯誤碼／訊息」的檢核清單，
+  影響報告標 `checklist: true`、不做缺口與重疊分析。
+- **決策樹縮排大綱**：工作台以 1. / (1) / A. / (a) / I. 的層級大綱呈現決策樹，可切換既有樹圖；
+  描述式修改與前後對照對決策樹同樣適用。
+- **標準 DMN 1.3 匯出與交叉驗證**：`POST /tools/dmn/export`（JSON）、`/tools/dmn/export.xml`（可存成 .dmn）、
+  `/tools/dmn/check`（同一組輸入由內建引擎與嵌入的 Camunda DMN 引擎各跑一次、逐欄比對）。
+  條件轉成 FEEL unary tests（`[18..50]`、`"男","女"`、`> 50`、`-`），決策樹先攤成表再匯出。
+  試算面板的模擬執行會順帶顯示「標準 DMN 引擎比對：一致／不一致」與 DMN 引擎耗時，並可下載 DMN。
+
 ### Changed
 - `POST /rules/{id}/submit` 現在要求 `{"reason": "..."}`，空白回 400。
 - `RecommendResponse` 新增 `method`、`needsClarification`、`clarifyingQuestion`、`clarifyOptions`。
