@@ -50,6 +50,9 @@ function toOutputs(results: unknown): Record<string, unknown> {
 function show(v: unknown): string {
   if (v === null || v === undefined || v === '') return '（空）';
   if (typeof v === 'boolean') return v ? '是' : '否';
+  if (typeof v === 'object') {
+    return Object.entries(v as Record<string, unknown>).map(([k, x]) => `${k} ${show(x)}`).join('、');
+  }
   return String(v);
 }
 
@@ -97,10 +100,12 @@ export default function TrialRunPanel({ envelope, ruleKey, status }: Props) {
           elapsedMs: performance.now() - t0,
         });
         setDmn(null);
-        try {
-          setDmn(await workbenchApi.dmnCheck(envelope, payload));
-        } catch (e) {
-          setDmn({ consistent: false, dmnMatched: false, dmnResults: [], differences: [errMsg(e)], warnings: [], dmnNanos: 0 });
+        if (envelope.ruleType === 'DecisionTable' || envelope.ruleType === 'DecisionTree') {
+          try {
+            setDmn(await workbenchApi.dmnCheck(envelope, payload));
+          } catch (e) {
+            setDmn({ consistent: false, dmnMatched: false, dmnResults: [], differences: [errMsg(e)], warnings: [], dmnNanos: 0 });
+          }
         }
       }
     } catch (e) {

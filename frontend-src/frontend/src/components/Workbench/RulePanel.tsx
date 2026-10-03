@@ -89,7 +89,7 @@ export default function RulePanel({ entry, dimensions, isMaker, isChecker, initi
       {tab === 'edit' && isMaker && latest ? (
         <RuleEditor ruleKey={entry.ruleKey} latest={latest} onChanged={changed} />
       ) : shownVersion != null ? (
-        <ReviewSheetPanel versionId={shownVersion} canReview={isChecker} onChanged={changed} />
+        <ReviewSheetPanel versionId={shownVersion} canReview={isChecker} onChanged={changed} tags={entry.tags} />
       ) : (
         <div className={`text-sm ${textTertiary}`}>載入中…</div>
       )}

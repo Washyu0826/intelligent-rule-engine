@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { workbenchApi, type ReviewSheetData } from '../../api/workbenchApi';
 import DiffView from '../Export/DiffView';
 import ImpactPanel from './ImpactPanel';
-import { BoundsPanel, RegressionPanel } from './ImpactExtras';
+import { BoundsPanel, FairnessPanel, RegressionPanel } from './ImpactExtras';
 import RuleView from './RuleView';
 import StatusBadge from './StatusBadge';
 import TrialRunPanel from './TrialRunPanel';
@@ -12,9 +12,11 @@ interface Props {
   versionId: number;
   canReview: boolean;
   onChanged: () => void;
+  /** 規則的標籤（含「法規」維度），審核時一併看對應到哪些法規／內規條款 */
+  tags?: Record<string, string[]>;
 }
 
-export default function ReviewSheetPanel({ versionId, canReview, onChanged }: Props) {
+export default function ReviewSheetPanel({ versionId, canReview, onChanged, tags }: Props) {
   const [sheet, setSheet] = useState<ReviewSheetData | null>(null);
   const [comment, setComment] = useState('');
   const [busy, setBusy] = useState(false);
@@ -74,11 +76,21 @@ export default function ReviewSheetPanel({ versionId, canReview, onChanged }: Pr
           <span className={`text-xs ${textTertiary}`}>送審理由&emsp;</span>
           {sheet.submitReason || '（未填寫）'}
         </div>
+        {tags && Object.keys(tags).length > 0 && (
+          <div className={`text-xs ${textSecondary}`}>
+            {Object.entries(tags).map(([dim, values]) => (
+              <span key={dim} className="mr-3">
+                <span className={textTertiary}>{dim}：</span>{values.join('、')}
+              </span>
+            ))}
+          </div>
+        )}
         {sheet.impact.note && <div className="text-xs text-amber-600">{sheet.impact.note}</div>}
       </div>
 
       <BoundsPanel bounds={sheet.impact.bounds} />
       <RegressionPanel regression={sheet.impact.regression} />
+      <FairnessPanel fairness={sheet.impact.fairness} />
       {!sheet.impact.checklist && (
         <ImpactPanel analysis={sheet.impact.analysis} title="影響報告：缺口與重疊（送審當下的快照）" />
       )}

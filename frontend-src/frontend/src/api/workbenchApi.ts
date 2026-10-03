@@ -74,6 +74,29 @@ export interface RegressionReport {
   examples: { input: Record<string, unknown>; before: RegressionOutcome; after: RegressionOutcome }[];
 }
 
+export interface FairnessGroup {
+  value: string;
+  count: number;
+  outcomes: Record<string, number>;
+  rates: Record<string, number>;
+}
+
+export interface FairnessDimension {
+  field: string;
+  outputField: string;
+  groups: FairnessGroup[];
+  widestOutcome?: string;
+  maxGap: number;
+  warning: boolean;
+}
+
+export interface FairnessReport {
+  sampleCount: number;
+  threshold: number;
+  dimensions: FairnessDimension[];
+  anyWarning: boolean;
+}
+
 export interface ChainStep {
   ruleKey: string;
   stopOnHit: boolean;
@@ -102,6 +125,7 @@ export interface ImpactReport {
   note?: string;
   bounds?: BoundsReport;
   regression?: RegressionReport;
+  fairness?: FairnessReport;
   /** 多重命中的檢核清單：不做缺口／重疊分析 */
   checklist?: boolean;
   analysis?: ImpactAnalysis;

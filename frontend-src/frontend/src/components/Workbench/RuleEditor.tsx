@@ -9,7 +9,7 @@ import {
 } from '../../api/workbenchApi';
 import DiffView from '../Export/DiffView';
 import ImpactPanel from './ImpactPanel';
-import { BoundsPanel, RegressionPanel } from './ImpactExtras';
+import { BoundsPanel, FairnessPanel, RegressionPanel } from './ImpactExtras';
 import RuleView from './RuleView';
 import StatusBadge from './StatusBadge';
 import TrialRunPanel from './TrialRunPanel';
@@ -178,6 +178,7 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
       {current && <TrialRunPanel envelope={current.after} ruleKey={ruleKey} status={latest.status} />}
       {current && <BoundsPanel bounds={current.impact.bounds} />}
       {current && <RegressionPanel regression={current.impact.regression} />}
+      {current && <FairnessPanel fairness={current.impact.fairness} />}
       {current?.impact.checklist ? (
         <div className={`${card} p-4 text-xs ${textTertiary}`}>檢核清單（多重命中）：每項各自獨立，不做缺口與重疊分析</div>
       ) : (

@@ -128,6 +128,58 @@ function TreeRuleView({ envelope }: { envelope: RuleEnvelope }) {
   );
 }
 
+// ─── 評分卡：各維度計分規則＋分數帶 ───
+
+interface ScoringRule { ruleId?: string; condition?: RuleCondition; score?: number; description?: string }
+interface ScoringDimension { field: string; weight?: number; scoringRules?: ScoringRule[] }
+interface ScoreBand { bandId?: string; minScore?: number; maxScore?: number; results?: { field: string; value: unknown }[] }
+
+function ScoreCardView({ envelope }: { envelope: RuleEnvelope }) {
+  const rule = envelope.rule as { scoringDimensions?: ScoringDimension[]; scoreBands?: ScoreBand[] } | undefined;
+  const dims = rule?.scoringDimensions ?? [];
+  const bands = rule?.scoreBands ?? [];
+  return (
+    <div className={`${card} p-4 space-y-4`}>
+      <div className="flex items-center justify-between">
+        <span className={`text-sm font-semibold ${textPrimary}`}>規則內容（評分卡：{dims.length} 個維度、{bands.length} 個分數帶）</span>
+        <span className={`text-[11px] ${textTertiary}`}>各維度取第一條成立的計分規則，乘以權重後加總</span>
+      </div>
+      {dims.map((d) => (
+        <div key={d.field} className="space-y-1">
+          <div className={`text-sm ${textPrimary}`}>
+            <b>{d.field}</b>
+            {d.weight != null && d.weight !== 1 && <span className={`text-xs ml-2 ${textTertiary}`}>權重 {d.weight}</span>}
+          </div>
+          <ol className="pl-5 space-y-0.5">
+            {(d.scoringRules ?? []).map((r, i) => (
+              <li key={r.ruleId ?? i} className={`text-sm ${textSecondary}`}>
+                <span className={`font-mono text-[10px] mr-2 ${textTertiary}`}>{r.ruleId}</span>
+                {r.condition && r.condition.operator !== 'anything' ? condText(r.condition) : '其他'}
+                <span className={`ml-2 font-semibold ${textPrimary}`}>→ {r.score ?? 0} 分</span>
+                {r.description && <span className={`ml-2 text-xs ${textTertiary}`}>{r.description}</span>}
+              </li>
+            ))}
+          </ol>
+        </div>
+      ))}
+      <div className="space-y-1">
+        <div className={`text-sm font-semibold ${textPrimary}`}>分數帶</div>
+        <table className={`text-xs ${textPrimary}`}>
+          <tbody>
+            {bands.map((b, i) => (
+              <tr key={b.bandId ?? i}>
+                <td className={`pr-3 py-0.5 font-mono ${textTertiary}`}>{b.bandId}</td>
+                <td className="pr-3 py-0.5">總分 {b.minScore ?? '-∞'} ～ {b.maxScore ?? '∞'}</td>
+                <td className="py-0.5">→ {(b.results ?? []).map((r) => `${r.field} 為 ${valueText(r.value)}`).join('、')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 // ─── 決策表：白話句子／表格；MULTI 顯示為檢核清單 ───
 
 export default function RuleView({ envelope }: { envelope: RuleEnvelope }) {
@@ -135,6 +187,7 @@ export default function RuleView({ envelope }: { envelope: RuleEnvelope }) {
   const table = envelope.ruleType === 'DecisionTable' ? parseDecisionTable(envelope.rule) : null;
 
   if (envelope.ruleType === 'DecisionTree') return <TreeRuleView envelope={envelope} />;
+  if (envelope.ruleType === 'ScoreCard') return <ScoreCardView envelope={envelope} />;
 
   if (!table) {
     return (

@@ -1,4 +1,4 @@
-import type { BoundsReport, RegressionReport } from '../../api/workbenchApi';
+import type { BoundsReport, FairnessReport, RegressionReport } from '../../api/workbenchApi';
 import { card, textPrimary, textSecondary, textTertiary } from './ui';
 
 function show(v: unknown): string {
@@ -39,6 +39,54 @@ export function BoundsPanel({ bounds }: { bounds?: BoundsReport }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+export function FairnessPanel({ fairness }: { fairness?: FairnessReport }) {
+  if (!fairness || fairness.dimensions.length === 0) return null;
+  return (
+    <div className={`${card} p-4 space-y-3 ${fairness.anyWarning ? 'border-l-4 border-l-amber-500' : ''}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className={`text-sm font-semibold ${textPrimary}`}>公平待遇：敏感維度的結果分布</span>
+        <span className={`text-xs ${fairness.anyWarning ? 'text-amber-600 font-semibold' : 'text-emerald-600'}`}>
+          {fairness.anyWarning ? `有群體差距超過 ${Math.round(fairness.threshold * 100)}%` : `各群體差距都在 ${Math.round(fairness.threshold * 100)}% 內`}
+        </span>
+      </div>
+      {fairness.dimensions.map((d) => {
+        const outcomes = Array.from(new Set(d.groups.flatMap((g) => Object.keys(g.rates))));
+        return (
+          <div key={d.field} className="space-y-1">
+            <div className={`text-xs ${d.warning ? 'text-amber-600' : textSecondary}`}>
+              <b>{d.field}</b> → {d.outputField}
+              {d.widestOutcome && <span>&emsp;「{d.widestOutcome}」比例在群體間最多差 {Math.round(d.maxGap * 100)}%</span>}
+            </div>
+            <div className="overflow-auto">
+              <table className={`text-xs ${textPrimary}`}>
+                <thead>
+                  <tr className={`text-left ${textTertiary}`}>
+                    <th className="py-0.5 pr-3">{d.field}</th>
+                    <th className="py-0.5 pr-3">案件</th>
+                    {outcomes.map((o) => <th key={o} className="py-0.5 pr-3">{o}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.groups.map((g) => (
+                    <tr key={g.value} className="border-t dark:border-border/40 border-light-border">
+                      <td className="py-0.5 pr-3">{g.value}</td>
+                      <td className={`py-0.5 pr-3 tabular-nums ${textTertiary}`}>{g.count}</td>
+                      {outcomes.map((o) => (
+                        <td key={o} className="py-0.5 pr-3 tabular-nums">{Math.round((g.rates[o] ?? 0) * 100)}%</td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
+      <div className={`text-[11px] ${textTertiary}`}>{fairness.sampleCount} 筆合成案件；只呈現分布，不代表歧視判定。</div>
     </div>
   );
 }
