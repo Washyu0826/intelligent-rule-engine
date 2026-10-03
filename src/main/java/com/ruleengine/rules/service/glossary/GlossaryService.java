@@ -36,30 +36,64 @@ public class GlossaryService {
 
     private final ObjectMapper yamlMapper = new ObjectMapper(new YAMLFactory());
 
+    /** 公開的通用詞彙包（classpath），依序載入；後載入的同 id 覆蓋先前的。 */
+    @org.springframework.beans.factory.annotation.Value("${rules.glossary.packs:glossary/underwriting-vocabulary.yaml}")
+    private List<String> packs = List.of("glossary/underwriting-vocabulary.yaml");
+
+    /** 本地覆寫檔（公司自己的欄位代碼、值域、內部名稱），最後載入、同 id 以它為準；不進公開 repo。 */
+    @org.springframework.beans.factory.annotation.Value("${rules.glossary.override-file:}")
+    private String overrideFile = "";
+
     @PostConstruct
     public void load() {
-        try (InputStream is = new ClassPathResource(GLOSSARY_RESOURCE).getInputStream()) {
-            GlossaryFile file = yamlMapper.readValue(is, GlossaryFile.class);
-            Map<String, GlossaryEntry> map = new LinkedHashMap<>();
-            if (file.entries != null) {
-                for (GlossaryEntry entry : file.entries) {
-                    if (entry.getId() == null || entry.getId().isBlank()) {
-                        log.warn("Skipping glossary entry without id: {}", entry);
-                        continue;
-                    }
-                    if (map.containsKey(entry.getId())) {
-                        log.warn("Duplicate glossary id '{}' — keeping first occurrence", entry.getId());
-                        continue;
-                    }
-                    map.put(entry.getId(), entry);
-                }
-            }
-            this.byId = Collections.unmodifiableMap(map);
-            log.info("Glossary loaded | total={} entries from {}", map.size(), GLOSSARY_RESOURCE);
-        } catch (Exception e) {
-            log.error("Failed to load glossary from {}", GLOSSARY_RESOURCE, e);
-            this.byId = Collections.emptyMap();
+        Map<String, GlossaryEntry> map = new LinkedHashMap<>();
+        int starter = mergeFrom(new ClassPathResource(GLOSSARY_RESOURCE), map, false);
+        int packed = 0;
+        for (String pack : packs) {
+            if (pack == null || pack.isBlank()) continue;
+            packed += mergeFrom(new ClassPathResource(pack.strip()), map, true);
         }
+        int overridden = 0;
+        if (overrideFile != null && !overrideFile.isBlank()) {
+            overridden = mergeFrom(new org.springframework.core.io.FileSystemResource(overrideFile.strip()), map, true);
+        }
+        this.byId = Collections.unmodifiableMap(map);
+        log.info("Glossary loaded | total={} | starter={} | packs={} | override={}",
+                map.size(), starter, packed, overridden);
+    }
+
+    /** 讀一個 YAML 詞彙檔併入 map；override=true 時同 id 覆蓋，否則保留先前的。回傳併入筆數。 */
+    private int mergeFrom(org.springframework.core.io.Resource res, Map<String, GlossaryEntry> map, boolean override) {
+        if (!res.exists()) {
+            log.warn("Glossary source not found, skipped: {}", res.getDescription());
+            return 0;
+        }
+        int count = 0;
+        try (InputStream is = res.getInputStream()) {
+            GlossaryFile file = yamlMapper.readValue(is, GlossaryFile.class);
+            if (file.entries == null) return 0;
+            for (GlossaryEntry entry : file.entries) {
+                if (entry.getId() == null || entry.getId().isBlank()) {
+                    log.warn("Skipping glossary entry without id: {}", entry);
+                    continue;
+                }
+                if (map.containsKey(entry.getId()) && !override) {
+                    log.warn("Duplicate glossary id '{}' — keeping first occurrence", entry.getId());
+                    continue;
+                }
+                map.put(entry.getId(), entry);
+                count++;
+            }
+        } catch (Exception e) {
+            log.error("Failed to load glossary from {}", res.getDescription(), e);
+        }
+        return count;
+    }
+
+    /** 依語意角色取詞彙（核保詞彙包）：decision-outcome / manual-review / sensitive-dimension … */
+    public List<GlossaryEntry> findBySemantic(String semantic) {
+        if (semantic == null || semantic.isBlank()) return List.of();
+        return byId.values().stream().filter(e -> semantic.equalsIgnoreCase(e.getSemantic())).toList();
     }
 
     /** 取全部 entries（保留 YAML 順序）。 */

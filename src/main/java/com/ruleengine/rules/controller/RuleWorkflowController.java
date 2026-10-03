@@ -175,6 +175,14 @@ public class RuleWorkflowController {
                 .body(Map.of("error", "WORKFLOW_VIOLATION", "message", e.getMessage()));
     }
 
+    @ExceptionHandler(WorkbenchService.BoundsViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleBounds(WorkbenchService.BoundsViolationException e) {
+        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body(Map.of("error", "BOUNDS_VIOLATION", "message", e.getMessage(),
+                        "violations", e.getReport().violations(),
+                        "escalateTo", e.getReport().escalateTo() == null ? "精算" : e.getReport().escalateTo()));
+    }
+
     @ExceptionHandler(ReviewWorkflowService.VersionNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(
             ReviewWorkflowService.VersionNotFoundException e) {

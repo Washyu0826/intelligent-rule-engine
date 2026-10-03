@@ -25,8 +25,23 @@ import java.util.regex.Pattern;
 public class GapCaseBuilder {
 
     private static final Pattern RULE_ID = Pattern.compile("^R(\\d+)$");
-    private static final Set<String> MANUAL_MARKERS = Set.of(
+    private static final Set<String> DEFAULT_MANUAL_MARKERS = Set.of(
             "人工評估", "人工核保", "人工審核", "人工覆核", "MANUAL_REVIEW", "MANUAL", "REVIEW", "REFER");
+
+    private Set<String> manualMarkers = DEFAULT_MANUAL_MARKERS;
+
+    /** 有詞彙表時改用 semantic=manual-review 的所有寫法（含本地覆寫），沒有就用內建清單。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    public void setGlossary(com.ruleengine.rules.service.glossary.GlossaryService glossary) {
+        if (glossary == null) return;
+        Set<String> markers = new java.util.HashSet<>(DEFAULT_MANUAL_MARKERS);
+        glossary.findBySemantic("manual-review").forEach(e -> {
+            if (e.getZh_TW() != null) markers.add(e.getZh_TW().toUpperCase());
+            if (e.getEn() != null) markers.add(e.getEn().toUpperCase());
+            if (e.getSynonyms() != null) e.getSynonyms().forEach(s -> markers.add(s.toUpperCase()));
+        });
+        this.manualMarkers = Set.copyOf(markers);
+    }
 
     public RuleRow build(RuleEnvelope envelope, Map<String, String> gapConditions) {
         RuleEnvelope.Rule rule = envelope.getRule();
@@ -99,10 +114,10 @@ public class GapCaseBuilder {
         return Condition.builder().field(input.getName()).operator(operator).value(value).build();
     }
 
-    private static Object defaultFor(FieldDef output) {
+    private Object defaultFor(FieldDef output) {
         if (output.getAllowedValues() == null) return null;
         return output.getAllowedValues().stream()
-                .filter(v -> MANUAL_MARKERS.contains(v.toUpperCase()))
+                .filter(v -> manualMarkers.contains(v.toUpperCase()))
                 .findFirst().orElse(null);
     }
 

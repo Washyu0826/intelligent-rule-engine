@@ -1,0 +1,206 @@
+# 核保詞彙包（通用版）
+#
+# 業界公開的核保用語與其語意角色。這份是公開 repo 的通用層；
+# 公司自己的欄位代碼、值域、內部名稱放在本地覆寫檔（rules.glossary.override-file），
+# 同 id 的 entry 以覆寫檔為準，不進公開 repo。
+#
+# semantic（語意角色）讓系統認得「這個值是什麼意思」：
+#   decision-outcome   — 核保決議的可能值（承保、加費、除外、延期、拒保）
+#   manual-review      — 需要人工介入的決議（補缺口時的保守預設）
+#   premium-factor     — 保費係數／加費倍率（精算邊界常見對象）
+#   exclusion          — 除外（病名、部位、條款）
+#   postpone           — 延期（月數）
+#   occupation-class   — 職業類別（1–6 類）
+#   disability-grade   — 失能等級
+#   sensitive-dimension— 公平待遇分析要看的敏感維度（年齡、性別、職業）
+#   check-message      — 檢核清單輸出的錯誤碼／訊息
+
+entries:
+  # ─── 核保決議 ───
+  - id: uw-decision
+    zh_TW: 核保決議
+    en: Underwriting decision
+    synonyms: [投保決議, 決議, 核保結果, decision, underwritingDecision]
+    definition: 核保人員對一件投保申請的處置結果
+    category: 核保
+    semantic: decision-outcome
+    dataType: Enum
+    status: active
+    relatedTerms: [uw-standard, uw-loading, uw-exclusion, uw-postpone, uw-decline, uw-manual]
+
+  - id: uw-standard
+    zh_TW: 承保
+    en: Standard / Accept
+    synonyms: [標準體, 核准, 照案承保, ACCEPT, APPROVE, STANDARD]
+    definition: 依標準費率承保，不附加條件
+    category: 核保
+    semantic: decision-outcome
+    status: active
+
+  - id: uw-loading
+    zh_TW: 加費
+    en: Loading / Substandard
+    synonyms: [加費承保, 次標準體, 加費核准, LOADING, SUBSTANDARD]
+    definition: 因風險較高，以高於標準的費率承保
+    category: 核保
+    semantic: decision-outcome
+    status: active
+    relatedTerms: [premium-factor]
+
+  - id: uw-exclusion
+    zh_TW: 除外
+    en: Exclusion
+    synonyms: [附除外條款, 除外承保, 批註除外, EXCLUSION]
+    definition: 承保但對特定疾病、部位或原因不負給付責任
+    category: 核保
+    semantic: decision-outcome
+    status: active
+    relatedTerms: [exclusion-name]
+
+  - id: uw-postpone
+    zh_TW: 延期
+    en: Postpone
+    synonyms: [延期承保, 暫緩, P, POSTPONE]
+    definition: 暫不承保，待一段期間後再評估
+    category: 核保
+    semantic: decision-outcome
+    status: active
+    relatedTerms: [postpone-months]
+
+  - id: uw-decline
+    zh_TW: 拒保
+    en: Decline
+    synonyms: [婉拒, 不承保, DECLINE, REJECT]
+    definition: 不接受投保
+    category: 核保
+    semantic: decision-outcome
+    status: active
+
+  - id: uw-manual
+    zh_TW: 人工評估
+    en: Manual review
+    synonyms: [人工核保, 人工審核, 人工覆核, 照會, 轉核保, MANUAL_REVIEW, MANUAL, REVIEW, REFER]
+    definition: 無法由規則自動決定，交由核保人員判斷
+    category: 核保
+    semantic: manual-review
+    status: active
+
+  # ─── 加費與除外 ───
+  - id: premium-factor
+    zh_TW: 保費係數
+    en: Premium factor
+    synonyms: [加費係數, 加費倍率, 費率係數, factor, premiumFactor, loadingFactor]
+    definition: 標準保費的倍率；1.0 為標準體
+    category: 精算
+    semantic: premium-factor
+    dataType: Decimal
+    valueRange: "[1.0, 2.2]"
+    status: active
+
+  - id: loading-percent
+    zh_TW: 加費百分比
+    en: Loading percentage
+    synonyms: [加費比例, 加費%, loadingPercent]
+    definition: 相對標準保費額外收取的百分比
+    category: 精算
+    semantic: premium-factor
+    dataType: Decimal
+    unit: "%"
+    status: active
+
+  - id: exclusion-name
+    zh_TW: 除外病名
+    en: Exclusion item
+    synonyms: [除外項目, 除外條款說明, exclusionNote, exclusionClause]
+    definition: 除外承保時列明不保的疾病或部位
+    category: 核保
+    semantic: exclusion
+    dataType: String
+    status: active
+
+  - id: postpone-months
+    zh_TW: 延期月數
+    en: Postpone months
+    synonyms: [延期期間, postponeMonths]
+    definition: 延期承保後再評估的等待月數
+    category: 核保
+    semantic: postpone
+    dataType: Integer
+    unit: 月
+    status: active
+
+  # ─── 分級 ───
+  - id: occupation-class
+    zh_TW: 職業類別
+    en: Occupation class
+    synonyms: [職業等級, 職類, occupationClass, occupationRisk]
+    definition: 依職業危險程度分為 1 至 6 類，數字越大風險越高
+    category: 核保
+    semantic: occupation-class
+    dataType: Integer
+    valueRange: "[1, 6]"
+    status: active
+
+  - id: disability-grade
+    zh_TW: 失能等級
+    en: Disability grade
+    synonyms: [殘廢等級, 失能程度, disabilityLevel, disabilityGrade]
+    definition: 依失能程度分為 1 至 11 級，1 級最重
+    category: 核保
+    semantic: disability-grade
+    dataType: Integer
+    valueRange: "[1, 11]"
+    status: active
+
+  # ─── 敏感維度（公平待遇分析） ───
+  - id: insured-age
+    zh_TW: 被保人年齡
+    en: Insured age
+    synonyms: [年齡, 投保年齡, age, insuredAge]
+    definition: 投保時被保險人之年齡
+    category: 核保
+    semantic: sensitive-dimension
+    dataType: Integer
+    unit: 歲
+    status: active
+
+  - id: gender
+    zh_TW: 性別
+    en: Gender
+    synonyms: [sex, gender]
+    definition: 被保險人性別
+    category: 核保
+    semantic: sensitive-dimension
+    dataType: Enum
+    status: active
+
+  - id: occupation
+    zh_TW: 職業
+    en: Occupation
+    synonyms: [職務, occupation]
+    definition: 被保險人職業
+    category: 核保
+    semantic: sensitive-dimension
+    dataType: String
+    status: active
+
+  # ─── 檢核清單輸出 ───
+  - id: error-code
+    zh_TW: 錯誤碼
+    en: Error code
+    synonyms: [訊息代碼, errorCode]
+    definition: 檢核未通過時回傳的代碼
+    category: 合規
+    semantic: check-message
+    dataType: String
+    status: active
+
+  - id: error-message
+    zh_TW: 錯誤訊息
+    en: Error message
+    synonyms: [拋訊息, 提示訊息, errorMessage]
+    definition: 檢核未通過時顯示給使用者的說明
+    category: 合規
+    semantic: check-message
+    dataType: String
+    status: active

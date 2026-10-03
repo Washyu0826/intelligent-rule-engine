@@ -1,0 +1,46 @@
+# 精算邊界（示範檔，全部為合成值）
+#
+# 精算不再維護日常核保規則，只在這裡設「業務部不得越過的線」。
+# 業務規則送審時逐列檢查；越界直接擋下，並提示升級給精算。
+# 正式環境把真實邊界放在本地檔案，以 rules.bounds.file 指向它，不進公開 repo。
+#
+# 兩種限制：
+#   bound        — 某個輸出欄位的數值上限／下限
+#   forbid       — 當某個輸入落在某範圍時，某個輸出欄位不得是這些值
+# fields 列出欄位的各種寫法（中文名、英文名、欄位代碼），任一相符即套用。
+
+owner: 精算
+escalateTo: 精算（請於送審前聯絡精算確認邊界）
+
+constraints:
+  - id: premium-factor-max
+    type: bound
+    description: 保費係數不得超過 2.2
+    fields: [保費係數, factor, premiumFactor, PREMIUM_FACTOR]
+    max: 2.2
+
+  - id: premium-factor-min
+    type: bound
+    description: 保費係數不得低於 1.0
+    fields: [保費係數, factor, premiumFactor, PREMIUM_FACTOR]
+    min: 1.0
+
+  - id: no-auto-accept-over-65
+    type: forbid
+    description: 66 歲（含）以上不得自動承保，須人工評估
+    when:
+      fields: [被保人年齡, 年齡, age, insuredAge, INSURED_AGE]
+      min: 66
+    output:
+      fields: [核保決議, 決議, decision, underwritingDecision, UNDERWRITING_DECISION]
+      values: [承保, 標準體, ACCEPT, APPROVE, STANDARD]
+
+  - id: no-auto-accept-high-sum
+    type: forbid
+    description: 保額 2000 萬以上不得自動核准
+    when:
+      fields: [保額, sumAssured, SUM_ASSURED]
+      min: 20000000
+    output:
+      fields: [投保決議, 核保決議, decision, underwritingDecision]
+      values: [核准, 承保, ACCEPT, APPROVE]

@@ -15,6 +15,8 @@ import com.ruleengine.rules.persistence.rulestore.RuleVersionEntity;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionRepository;
 import com.ruleengine.rules.service.RuleService;
 import com.ruleengine.rules.service.analyzer.GapCaseBuilder;
+import com.ruleengine.rules.service.analyzer.RegressionService;
+import com.ruleengine.rules.service.bounds.BoundsService;
 import com.ruleengine.rules.service.diff.RuleDiffService;
 import com.ruleengine.rules.service.diff.TreeDiffService;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +62,8 @@ public class WorkbenchService {
     private final RuleDiffService ruleDiffService;
     private final TreeDiffService treeDiffService;
     private final GapCaseBuilder gapCaseBuilder;
+    private final BoundsService boundsService;
+    private final RegressionService regressionService;
     private final ObjectMapper objectMapper;
 
     @Value("${rules.workbench.tag-dimensions:分類,主題}")
@@ -168,10 +172,28 @@ public class WorkbenchService {
         if (reason == null || reason.isBlank()) {
             throw new RuleStoreService.RuleStoreException("送審必須填寫修改理由");
         }
+        RuleVersionEntity draft = load(versionId);
+        BoundsService.BoundsReport bounds = boundsService.check(store.deserialize(draft));
+        if (!bounds.violations().isEmpty()) {
+            throw new BoundsViolationException(bounds);
+        }
         RuleVersionEntity v = workflow.submit(versionId, maker);
         v.setSubmitReason(reason.strip());
         v.setImpactReport(impactReportJson(v));
         return versions.saveAndFlush(v);
+    }
+
+    /** 越過精算邊界：送審直接擋下，前端提示升級給精算（Q9／Q32）。 */
+    public static class BoundsViolationException extends RuntimeException {
+        private final transient BoundsService.BoundsReport report;
+
+        public BoundsViolationException(BoundsService.BoundsReport report) {
+            super("越過精算邊界 " + report.violations().size() + " 項，無法送審；請聯絡 "
+                    + (report.escalateTo() == null ? "精算" : report.escalateTo()));
+            this.report = report;
+        }
+
+        public BoundsService.BoundsReport getReport() { return report; }
     }
 
     // ================================================================
@@ -288,6 +310,14 @@ public class WorkbenchService {
             report.set("behaviorDiff", objectMapper.valueToTree(ruleDiffService.diff(before, after)));
         }
 
+        report.set("bounds", objectMapper.valueToTree(boundsService.check(after)));
+        if (sameType && !isChecklist(after)) {
+            try {
+                report.set("regression", objectMapper.valueToTree(regressionService.run(before, after)));
+            } catch (Exception e) {
+                log.warn("批次回歸失敗，影響報告略過此段：{}", e.getMessage());
+            }
+        }
         if (isChecklist(after)) {
             report.put("checklist", true);
             report.put("note", "檢核清單（多重命中）：每條檢核各自獨立，不做缺口與重疊分析");

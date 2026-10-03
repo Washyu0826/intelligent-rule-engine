@@ -91,6 +91,14 @@ rules:
     min-quality: 0.4        # 完整度低於此值列為 blocker
     require-outputs: true   # 無任何輸出欄位列為 blocker
     min-length: 15          # 描述短於此字數列為 blocker
+  # 核保詞彙包：公開通用層（classpath）＋本地覆寫檔（公司自己的欄位代碼與值域，不進 repo）
+  glossary:
+    packs: glossary/underwriting-vocabulary.yaml
+    override-file: "${RULES_GLOSSARY_OVERRIDE:}"
+  # 精算邊界：送審時逐列檢查；正式環境以本地檔案取代示範檔
+  bounds:
+    enabled: true
+    file: "${RULES_BOUNDS_FILE:}"
   # 驗證設定
   validation:
     max-tree-depth: 10

@@ -611,7 +611,11 @@ public class ToolsController {
     @GetMapping("/glossary")
     public ResponseEntity<java.util.List<com.ruleengine.rules.domain.glossary.GlossaryEntry>> listGlossary(
             @RequestParam(required = false) String category,
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String semantic) {
+        if (semantic != null && !semantic.isBlank()) {
+            return ResponseEntity.ok(glossaryService.findBySemantic(semantic));
+        }
         return ResponseEntity.ok(glossaryService.search(q, category));
     }
 

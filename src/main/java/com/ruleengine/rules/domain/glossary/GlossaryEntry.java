@@ -29,6 +29,13 @@ public class GlossaryEntry {
     /** 唯一鍵（kebab-case）。 */
     private String id;
 
+    /**
+     * 語意角色（核保詞彙包）：decision-outcome / manual-review / premium-factor / exclusion /
+     * postpone / occupation-class / disability-grade / sensitive-dimension / check-message。
+     * 生成、補缺口、試算、公平待遇分析用它認出欄位與值的業務意義，而不是靠字面猜。
+     */
+    private String semantic;
+
     /** 中文（繁）。 */
     private String zh_TW;
 
