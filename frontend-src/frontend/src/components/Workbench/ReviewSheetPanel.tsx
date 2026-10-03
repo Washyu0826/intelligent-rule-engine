@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { workbenchApi, type ReviewSheetData } from '../../api/workbenchApi';
 import DiffView from '../Export/DiffView';
 import ImpactPanel from './ImpactPanel';
+import { BoundsPanel, RegressionPanel } from './ImpactExtras';
 import RuleView from './RuleView';
 import StatusBadge from './StatusBadge';
 import TrialRunPanel from './TrialRunPanel';
@@ -76,6 +77,8 @@ export default function ReviewSheetPanel({ versionId, canReview, onChanged }: Pr
         {sheet.impact.note && <div className="text-xs text-amber-600">{sheet.impact.note}</div>}
       </div>
 
+      <BoundsPanel bounds={sheet.impact.bounds} />
+      <RegressionPanel regression={sheet.impact.regression} />
       {!sheet.impact.checklist && (
         <ImpactPanel analysis={sheet.impact.analysis} title="影響報告：缺口與重疊（送審當下的快照）" />
       )}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { getAuth, subscribeAuth, type AuthState } from '../../api/auth';
-import { workbenchApi, type TreeView, type VersionView } from '../../api/workbenchApi';
+import { workbenchApi, type ChainView, type TreeView, type VersionView } from '../../api/workbenchApi';
+import ChainPanel from './ChainPanel';
 import NewRuleForm from './NewRuleForm';
 import RulePanel from './RulePanel';
 import RuleTree from './RuleTree';
@@ -13,6 +14,8 @@ export default function WorkbenchTab() {
   const [filter, setFilter] = useState<Record<string, string>>({});
   const [queue, setQueue] = useState<VersionView[]>([]);
   const [selected, setSelected] = useState<{ ruleKey: string; versionId: number | null } | null>(null);
+  const [chains, setChains] = useState<ChainView[]>([]);
+  const [selectedChain, setSelectedChain] = useState<string | 'new' | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => subscribeAuth(() => setAuth(getAuth())), []);
@@ -27,6 +30,7 @@ export default function WorkbenchTab() {
     try {
       setTree(await workbenchApi.tree(filter));
       setQueue(isChecker ? await workbenchApi.reviewQueue() : []);
+      setChains(await workbenchApi.chains());
     } catch (e) {
       setError(errMsg(e));
     }
@@ -56,17 +60,47 @@ export default function WorkbenchTab() {
         {isMaker && <NewRuleForm onCreated={(k) => { void refresh(); setSelected({ ruleKey: k, versionId: null }); }} />}
         <RuleTree
           tree={tree}
-          selectedKey={selected?.ruleKey ?? null}
-          onSelect={(k) => setSelected({ ruleKey: k, versionId: null })}
+          selectedKey={selectedChain ? null : selected?.ruleKey ?? null}
+          onSelect={(k) => { setSelectedChain(null); setSelected({ ruleKey: k, versionId: null }); }}
           filter={filter}
           onFilterChange={setFilter}
         />
+        <div className={`${card} p-4 space-y-2`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-sm font-semibold ${textPrimary}`}>流程</span>
+            {isMaker && (
+              <button type="button" className="text-xs cursor-pointer text-[var(--color-group-green-600)]" onClick={() => setSelectedChain('new')}>
+                ＋ 新流程
+              </button>
+            )}
+          </div>
+          {chains.length === 0 && <div className={`text-xs ${textTertiary}`}>還沒有流程</div>}
+          {chains.map((c) => (
+            <button
+              key={c.chainKey}
+              type="button"
+              onClick={() => setSelectedChain(c.chainKey)}
+              className={`w-full text-left px-2 py-1 rounded-md text-xs cursor-pointer ${
+                selectedChain === c.chainKey ? 'bg-[var(--color-group-green-600)]/10 ' + textPrimary : textSecondary
+              }`}
+            >
+              {c.name} <span className={textTertiary}>（{c.steps.length} 步）</span>
+            </button>
+          ))}
+        </div>
       </aside>
 
       <section className="min-w-0 space-y-4">
         {error && <div className="text-sm text-red-600">{error}</div>}
 
-        {entry ? (
+        {selectedChain ? (
+          <ChainPanel
+            chainKey={selectedChain === 'new' ? null : selectedChain}
+            rules={tree?.rules ?? []}
+            canEdit={isMaker}
+            onSaved={(k) => { setSelectedChain(k); void refresh(); }}
+          />
+        ) : entry ? (
           <RulePanel
             entry={entry}
             dimensions={tree?.tagDimensions ?? []}

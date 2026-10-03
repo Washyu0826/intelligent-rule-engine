@@ -44,9 +44,64 @@ export interface ImpactAnalysis {
   overlaps: string[];
 }
 
+export interface BoundsViolation {
+  constraintId: string;
+  description: string;
+  ruleId: string;
+  detail: string;
+}
+
+export interface BoundsReport {
+  checked: boolean;
+  constraintCount: number;
+  violations: BoundsViolation[];
+  escalateTo?: string;
+}
+
+export interface RegressionOutcome {
+  matched: boolean;
+  outputs: Record<string, unknown>;
+  hitRuleId?: string;
+}
+
+export interface RegressionReport {
+  sampleCount: number;
+  changedCount: number;
+  changeRate: number;
+  newlyMatched: number;
+  newlyUnmatched: number;
+  outputChanged: number;
+  examples: { input: Record<string, unknown>; before: RegressionOutcome; after: RegressionOutcome }[];
+}
+
+export interface ChainStep {
+  ruleKey: string;
+  stopOnHit: boolean;
+  label?: string;
+}
+
+export interface ChainView {
+  chainKey: string;
+  name: string;
+  steps: ChainStep[];
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface ChainOutcome {
+  chainKey: string;
+  steps: { ruleKey: string; label?: string; versionNo: number | null; matched: boolean; outputs: Record<string, unknown>; hitRuleIds: string[]; stopped: boolean; note?: string }[];
+  finalOutputs: Record<string, unknown>;
+  stopped: boolean;
+  stoppedAt?: string;
+  nanos: number;
+}
+
 export interface ImpactReport {
   firstVersion: boolean;
   note?: string;
+  bounds?: BoundsReport;
+  regression?: RegressionReport;
   /** 多重命中的檢核清單：不做缺口／重疊分析 */
   checklist?: boolean;
   analysis?: ImpactAnalysis;
@@ -187,5 +242,17 @@ export const workbenchApi = {
   },
   activate(id: number): Promise<VersionView> {
     return call('POST', `/rules/${id}/activate`, {});
+  },
+  chains(): Promise<ChainView[]> {
+    return call('GET', '/rules/chains');
+  },
+  chain(key: string): Promise<ChainView> {
+    return call('GET', `/rules/chains/${enc(key)}`);
+  },
+  saveChain(key: string, name: string, steps: ChainStep[]): Promise<ChainView> {
+    return call('PUT', `/rules/chains/${enc(key)}`, { name, steps });
+  },
+  executeChain(key: string, inputValues: Record<string, unknown>): Promise<ChainOutcome> {
+    return call('POST', `/engine/chain/${enc(key)}/execute`, { input: inputValues });
   },
 };
