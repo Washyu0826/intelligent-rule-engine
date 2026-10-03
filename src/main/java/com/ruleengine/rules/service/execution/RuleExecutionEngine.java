@@ -79,9 +79,82 @@ public class RuleExecutionEngine {
         return switch (ruleType) {
             case "DecisionTable" -> executeTable(envelope, snapshot, traceLevel, start);
             case "DecisionTree" -> executeTree(envelope, snapshot, traceLevel, start);
-            default -> throw new ExecutionException(
-                    "ruleType \"" + ruleType + "\" 尚不支援執行（ScoreCard 為 stub 型態）");
+            case "ScoreCard" -> executeScoreCard(envelope, snapshot, traceLevel, start);
+            default -> throw new ExecutionException("ruleType \"" + ruleType + "\" 尚不支援執行");
         };
+    }
+
+    // ================================================================
+    // ScoreCard：各維度首條成立的計分規則給分 × 權重，加總後落入分數帶
+    // ================================================================
+
+    private ExecutionResult executeScoreCard(RuleEnvelope envelope, Map<String, Object> input,
+                                             TraceLevel level, long start) {
+        List<RuleEnvelope.ScoringDimension> dims = envelope.getRule().getScoringDimensions();
+        List<RuleEnvelope.ScoreBand> bands = envelope.getRule().getScoreBands();
+        if (dims == null || dims.isEmpty()) throw new ExecutionException("ScoreCard 沒有 scoringDimensions");
+        if (bands == null || bands.isEmpty()) throw new ExecutionException("ScoreCard 沒有 scoreBands");
+
+        List<DecisionTrace.StepTrace> steps = level != TraceLevel.NONE ? new ArrayList<>() : null;
+        double total = 0;
+        Map<String, Object> breakdown = new LinkedHashMap<>();
+        int order = 0;
+        for (RuleEnvelope.ScoringDimension dim : dims) {
+            long dimStart = System.nanoTime();
+            double weight = dim.getWeight() == null ? 1.0 : dim.getWeight();
+            RuleEnvelope.ScoringRule hit = null;
+            List<DecisionTrace.ConditionTrace> condTraces = level == TraceLevel.FULL ? new ArrayList<>() : null;
+            if (dim.getScoringRules() != null) {
+                for (RuleEnvelope.ScoringRule sr : dim.getScoringRules()) {
+                    Condition cond = sr.getCondition();
+                    String field = cond != null && cond.getField() != null ? cond.getField() : dim.getField();
+                    Object actual = field != null ? input.get(field) : null;
+                    boolean ok = cond == null || lookupService.matchesCondition(cond, actual, input);
+                    if (condTraces != null && cond != null) {
+                        condTraces.add(DecisionTrace.ConditionTrace.builder()
+                                .field(field).operator(cond.getOperator())
+                                .expected(resolvedExpected(cond, input)).actual(actual).matched(ok)
+                                .build());
+                    }
+                    if (ok) { hit = sr; break; }
+                }
+            }
+            double score = hit != null && hit.getScore() != null ? hit.getScore() * weight : 0;
+            total += score;
+            breakdown.put(dim.getField(), score == Math.rint(score) ? (Object) (long) score : (Object) score);
+            if (steps != null) {
+                steps.add(DecisionTrace.StepTrace.builder()
+                        .id(hit != null ? hit.getRuleId() : dim.getField())
+                        .order(order)
+                        .matched(hit != null)
+                        .branchTaken(dim.getField() + "=" + breakdown.get(dim.getField()))
+                        .conditions(condTraces)
+                        .elapsedNanos(System.nanoTime() - dimStart)
+                        .build());
+            }
+            order++;
+        }
+
+        final double finalTotal = total;
+        RuleEnvelope.ScoreBand band = bands.stream()
+                .filter(b -> (b.getMinScore() == null || finalTotal >= b.getMinScore())
+                        && (b.getMaxScore() == null || finalTotal <= b.getMaxScore()))
+                .findFirst().orElse(null);
+        List<ExecutionResult.MatchedRule> matched = new ArrayList<>();
+        Object totalOut = total == Math.rint(total) ? (Object) (long) total : (Object) total;
+        if (band != null) {
+            Map<String, Object> outputs = toOutputMap(band.getResults());
+            outputs.put("totalScore", totalOut);
+            outputs.put("scoreBreakdown", breakdown);
+            matched.add(ExecutionResult.MatchedRule.builder()
+                    .ruleId(band.getBandId())
+                    .priority(bands.indexOf(band))
+                    .outputs(outputs)
+                    .build());
+        } else {
+            log.warn("評分卡總分 {} 沒有對應的分數帶（分數帶缺口）", totalOut);
+        }
+        return buildResult(envelope, input, level, start, steps, matched, band == null ? "totalScore=" + totalOut : null);
     }
 
     // ================================================================

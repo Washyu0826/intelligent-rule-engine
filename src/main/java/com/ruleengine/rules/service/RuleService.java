@@ -7,6 +7,7 @@ import com.ruleengine.rules.exception.RuleGenerationException;
 import com.ruleengine.rules.registry.RuleTypeRegistry;
 import com.ruleengine.rules.service.analyzer.AnalysisResult;
 import com.ruleengine.rules.service.analyzer.DmnAnalyzer;
+import com.ruleengine.rules.service.analyzer.ScoreCardAnalyzer;
 import com.ruleengine.rules.service.analyzer.TreeAnalyzer;
 import com.ruleengine.rules.service.audit.AuditService;
 import com.ruleengine.rules.service.converter.TableToTreeConverter;
@@ -52,6 +53,7 @@ public class RuleService {
     private final RuleRecommender recommender;
     private final DmnAnalyzer dmnAnalyzer;
     private final TreeAnalyzer treeAnalyzer;
+    private final ScoreCardAnalyzer scoreCardAnalyzer;
     private final TreeToTableConverter treeToTableConverter;
     private final TableToTreeConverter tableToTreeConverter;
     private final ObjectMapper objectMapper;
@@ -283,6 +285,8 @@ public class RuleService {
 
             if ("DecisionTree".equalsIgnoreCase(ruleType)) {
                 result = treeAnalyzer.analyze(ruleJson);
+            } else if ("ScoreCard".equalsIgnoreCase(ruleType)) {
+                result = scoreCardAnalyzer.analyze(ruleJson);
             } else {
                 result = dmnAnalyzer.analyze(ruleJson);
             }

@@ -14,6 +14,7 @@ import com.ruleengine.rules.persistence.rulestore.RuleTagRepository;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionEntity;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionRepository;
 import com.ruleengine.rules.service.RuleService;
+import com.ruleengine.rules.service.analyzer.FairnessService;
 import com.ruleengine.rules.service.analyzer.GapCaseBuilder;
 import com.ruleengine.rules.service.analyzer.RegressionService;
 import com.ruleengine.rules.service.bounds.BoundsService;
@@ -64,9 +65,10 @@ public class WorkbenchService {
     private final GapCaseBuilder gapCaseBuilder;
     private final BoundsService boundsService;
     private final RegressionService regressionService;
+    private final FairnessService fairnessService;
     private final ObjectMapper objectMapper;
 
-    @Value("${rules.workbench.tag-dimensions:分類,主題}")
+    @Value("${rules.workbench.tag-dimensions:分類,主題,法規}")
     private List<String> tagDimensions;
 
     // ================================================================
@@ -311,6 +313,13 @@ public class WorkbenchService {
         }
 
         report.set("bounds", objectMapper.valueToTree(boundsService.check(after)));
+        if (!isChecklist(after)) {
+            try {
+                report.set("fairness", objectMapper.valueToTree(fairnessService.analyze(after)));
+            } catch (Exception e) {
+                log.warn("公平待遇分析失敗，影響報告略過此段：{}", e.getMessage());
+            }
+        }
         if (sameType && !isChecklist(after)) {
             try {
                 report.set("regression", objectMapper.valueToTree(regressionService.run(before, after)));

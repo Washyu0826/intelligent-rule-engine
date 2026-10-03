@@ -166,6 +166,14 @@ public class RegressionService {
                     vals.add(box(b, integer));
                     vals.add(box(b + step, integer));
                 }
+                // 邊界之外再鋪幾個分布點，讓群體統計（公平待遇）不只看臨界值
+                if (!bounds.isEmpty()) {
+                    double lo = bounds.first(), hi = bounds.last();
+                    double span = Math.max(hi - lo, integer ? 10 : 1);
+                    for (double q : new double[]{-0.25, 0.25, 0.5, 0.75, 1.25}) {
+                        vals.add(box(lo + span * q, integer));
+                    }
+                }
                 if (vals.isEmpty()) { vals.add(box(0, integer)); vals.add(box(1, integer)); }
             }
             default -> {
@@ -206,6 +214,15 @@ public class RegressionService {
             }
         }
         if (e.getRule().getRoot() != null) walk(e.getRule().getRoot(), field, fn);
+        if (e.getRule().getScoringDimensions() != null) {
+            for (var dim : e.getRule().getScoringDimensions()) {
+                if (dim.getScoringRules() == null) continue;
+                for (var sr : dim.getScoringRules()) {
+                    Condition c = sr.getCondition();
+                    if (c != null && field.equals(c.getField() != null ? c.getField() : dim.getField())) fn.accept(c);
+                }
+            }
+        }
     }
 
     private static void walk(RuleEnvelope.TreeNode node, String field, java.util.function.Consumer<Condition> fn) {

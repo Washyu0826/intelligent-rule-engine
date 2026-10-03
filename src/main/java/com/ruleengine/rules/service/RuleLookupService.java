@@ -63,8 +63,53 @@ public class RuleLookupService {
         if ("DecisionTree".equalsIgnoreCase(ruleType)) {
             return lookupDecisionTree(envelope.getRule(), safeInputs);
         }
+        if ("ScoreCard".equalsIgnoreCase(ruleType)) {
+            return lookupScoreCard(envelope.getRule(), safeInputs);
+        }
         // Default to DecisionTable
         return lookupDecisionTable(envelope.getRule(), safeInputs);
+    }
+
+    // ========================================
+    // ScoreCard lookup：各維度首條成立的計分規則 × 權重加總，落入分數帶
+    // ========================================
+
+    private LookupResponse lookupScoreCard(Rule rule, Map<String, Object> inputValues) {
+        List<String> path = new ArrayList<>();
+        if (rule.getScoringDimensions() == null || rule.getScoreBands() == null) {
+            return new LookupResponse(false, List.of(), path, List.of());
+        }
+        double total = 0;
+        for (RuleEnvelope.ScoringDimension dim : rule.getScoringDimensions()) {
+            double weight = dim.getWeight() == null ? 1.0 : dim.getWeight();
+            RuleEnvelope.ScoringRule hit = null;
+            if (dim.getScoringRules() != null) {
+                for (RuleEnvelope.ScoringRule sr : dim.getScoringRules()) {
+                    Condition cond = sr.getCondition();
+                    String field = cond != null && cond.getField() != null ? cond.getField() : dim.getField();
+                    Object actual = field != null ? inputValues.get(field) : null;
+                    if (cond == null || matchesCondition(cond, actual, inputValues)) { hit = sr; break; }
+                }
+            }
+            double score = hit != null && hit.getScore() != null ? hit.getScore() * weight : 0;
+            total += score;
+            path.add(dim.getField() + ": " + (hit != null ? hit.getRuleId() : "無命中") + " → " + fmtScore(score));
+        }
+        final double finalTotal = total;
+        RuleEnvelope.ScoreBand band = rule.getScoreBands().stream()
+                .filter(b -> (b.getMinScore() == null || finalTotal >= b.getMinScore())
+                        && (b.getMaxScore() == null || finalTotal <= b.getMaxScore()))
+                .findFirst().orElse(null);
+        path.add("totalScore = " + fmtScore(total) + (band != null ? " → " + band.getBandId() : " → 沒有分數帶"));
+        if (band == null) return new LookupResponse(false, List.of(), path, List.of());
+        Map<String, Object> results = new java.util.LinkedHashMap<>();
+        if (band.getResults() != null) band.getResults().forEach(r -> results.put(r.getField(), r.getValue()));
+        results.put("totalScore", total == Math.rint(total) ? (Object) (long) total : (Object) total);
+        return new LookupResponse(true, List.of(new MatchedRule(band.getBandId(), null, results)), path, List.of());
+    }
+
+    private static String fmtScore(double s) {
+        return s == Math.rint(s) ? String.valueOf((long) s) : String.valueOf(s);
     }
 
     // ========================================

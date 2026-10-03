@@ -99,6 +99,10 @@ rules:
   bounds:
     enabled: true
     file: "${RULES_BOUNDS_FILE:}"
+  # 公平待遇：敏感維度（詞彙包 semantic=sensitive-dimension）各群體結果比例差距超過閾值即警示
+  fairness:
+    threshold: 0.3
+    samples: 300
   # 驗證設定
   validation:
     max-tree-depth: 10
