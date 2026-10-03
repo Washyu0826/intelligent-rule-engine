@@ -1,14 +1,28 @@
-import { card, textPrimary, textSecondary, textTertiary } from './ui';
+import { btnGhost, card, textPrimary, textSecondary, textTertiary } from './ui';
+
+export interface GapItem {
+  message: string;
+  conditions?: Record<string, string>;
+  volumeRatio?: number;
+}
 
 export interface AnalysisLike {
   coverageRate: number;
   gapCount: number;
   overlapCount: number;
-  gaps: string[];
+  gaps: GapItem[];
   overlaps: string[];
 }
 
-export default function ImpactPanel({ analysis, title = '缺口與重疊' }: { analysis?: AnalysisLike; title?: string }) {
+interface Props {
+  analysis?: AnalysisLike;
+  title?: string;
+  /** 提供時，每個有條件描述的缺口旁會出現「補成案例」 */
+  onFillGap?: (conditions: Record<string, string>) => void;
+  busy?: boolean;
+}
+
+export default function ImpactPanel({ analysis, title = '缺口與重疊', onFillGap, busy }: Props) {
   if (!analysis) {
     return (
       <div className={`${card} p-4 text-xs ${textTertiary}`}>
@@ -35,8 +49,22 @@ export default function ImpactPanel({ analysis, title = '缺口與重疊' }: { a
         {clean && <span className="text-emerald-600">沒有發現缺口或重疊</span>}
       </div>
       {analysis.gaps.length > 0 && (
-        <ul className={`text-xs list-disc pl-5 space-y-0.5 ${textSecondary}`}>
-          {analysis.gaps.slice(0, 5).map((g, i) => <li key={`g${i}`}>缺口：{g}</li>)}
+        <ul className={`text-xs list-disc pl-5 space-y-1 ${textSecondary}`}>
+          {analysis.gaps.slice(0, 5).map((g, i) => (
+            <li key={`g${i}`} className="flex flex-wrap items-center gap-2">
+              <span>缺口：{g.message}</span>
+              {onFillGap && g.conditions && Object.keys(g.conditions).length > 0 && (
+                <button
+                  type="button"
+                  className={`${btnGhost} !py-0.5 !px-2 !text-[11px]`}
+                  disabled={busy}
+                  onClick={() => onFillGap(g.conditions!)}
+                >
+                  補成案例
+                </button>
+              )}
+            </li>
+          ))}
           {analysis.gaps.length > 5 && <li>…另有 {analysis.gaps.length - 5} 項</li>}
         </ul>
       )}

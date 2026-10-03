@@ -30,11 +30,17 @@ export interface TreeView {
   rules: TreeEntry[];
 }
 
+export interface ImpactGap {
+  message: string;
+  conditions?: Record<string, string>;
+  volumeRatio?: number;
+}
+
 export interface ImpactAnalysis {
   coverageRate: number;
   gapCount: number;
   overlapCount: number;
-  gaps: string[];
+  gaps: ImpactGap[];
   overlaps: string[];
 }
 
@@ -123,6 +129,9 @@ export const workbenchApi = {
   },
   suggestChange(id: number, instruction: string): Promise<ChangeSuggestion> {
     return call('POST', `/rules/${id}/suggest-change`, { instruction }, 430_000);
+  },
+  gapCase(id: number, conditions: Record<string, string>): Promise<ChangeSuggestion> {
+    return call('POST', `/rules/${id}/gap-case`, { conditions });
   },
   submit(id: number, reason: string): Promise<VersionView> {
     return call('POST', `/rules/${id}/submit`, { reason });

@@ -14,6 +14,7 @@ import com.ruleengine.rules.persistence.rulestore.RuleTagRepository;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionEntity;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionRepository;
 import com.ruleengine.rules.service.RuleService;
+import com.ruleengine.rules.service.analyzer.GapCaseBuilder;
 import com.ruleengine.rules.service.diff.RuleDiffService;
 import com.ruleengine.rules.service.diff.TreeDiffService;
 import lombok.RequiredArgsConstructor;
@@ -58,6 +59,7 @@ public class WorkbenchService {
     private final RuleService ruleService;
     private final RuleDiffService ruleDiffService;
     private final TreeDiffService treeDiffService;
+    private final GapCaseBuilder gapCaseBuilder;
     private final ObjectMapper objectMapper;
 
     @Value("${rules.workbench.tag-dimensions:分類,主題}")
@@ -220,6 +222,32 @@ public class WorkbenchService {
                 buildImpact(current, proposed));
     }
 
+    /**
+     * 把一個缺口補成一列待填規則（Q9：決議類填保守值、其餘留空），回傳與 AI 建議相同形狀，
+     * 讓前端走同一條「前後對照 → 採用存成新草稿」的路。只支援決策表。
+     */
+    public ChangeSuggestion gapCase(Long versionId, Map<String, String> gapConditions) {
+        if (gapConditions == null || gapConditions.isEmpty()) {
+            throw new RuleStoreService.RuleStoreException("缺口沒有條件描述，無法補列");
+        }
+        RuleVersionEntity v = load(versionId);
+        if (!"DecisionTable".equalsIgnoreCase(v.getRuleType())) {
+            throw new RuleStoreService.RuleStoreException("目前只有決策表支援把缺口補成案例");
+        }
+        RuleEnvelope current = store.deserialize(v);
+        RuleEnvelope proposed = store.deserialize(v);
+        List<RuleEnvelope.RuleRow> rows = new ArrayList<>(
+                proposed.getRule().getRules() == null ? List.of() : proposed.getRule().getRules());
+        rows.add(gapCaseBuilder.build(proposed, gapConditions));
+        proposed.getRule().setRules(rows);
+
+        JsonNode proposedJson = objectMapper.valueToTree(proposed);
+        var validation = ruleService.validate(ToolDtos.ValidateRequest.builder()
+                .ruleJson(proposedJson).ruleType(v.getRuleType()).build());
+        return new ChangeSuggestion(proposedJson, objectMapper.valueToTree(validation),
+                buildImpact(current, proposed));
+    }
+
     // ================================================================
     // 影響報告
     // ================================================================
@@ -268,7 +296,11 @@ public class WorkbenchService {
         a.put("overlapCount", analysis.getOverlaps() == null ? 0 : analysis.getOverlaps().size());
         ArrayNode gaps = a.putArray("gaps");
         if (analysis.getGaps() != null) {
-            analysis.getGaps().stream().limit(MAX_LISTED).forEach(g -> gaps.add(g.getMessage()));
+            analysis.getGaps().stream().limit(MAX_LISTED).forEach(g -> {
+                ObjectNode gap = gaps.addObject();
+                gap.put("message", g.getMessage());
+                if (g.getConditions() != null) gap.set("conditions", objectMapper.valueToTree(g.getConditions()));
+            });
         }
         ArrayNode overlaps = a.putArray("overlaps");
         if (analysis.getOverlaps() != null) {

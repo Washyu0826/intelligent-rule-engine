@@ -65,6 +65,16 @@ public class RuleWorkbenchController {
         return workbench.suggestChange(id, request.instruction());
     }
 
+    /** 缺口的條件描述（欄位 → 區間），來自影響報告或 /tools/analyze 的 gaps[].conditions。 */
+    public record GapCaseRequest(Map<String, String> conditions) {}
+
+    @PostMapping("/{id}/gap-case")
+    @PreAuthorize("hasRole('MAKER')")
+    public WorkbenchService.ChangeSuggestion gapCase(@PathVariable Long id,
+                                                     @RequestBody GapCaseRequest request) {
+        return workbench.gapCase(id, request.conditions());
+    }
+
     @ExceptionHandler(ReviewWorkflowService.VersionNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNotFound(
             ReviewWorkflowService.VersionNotFoundException e) {

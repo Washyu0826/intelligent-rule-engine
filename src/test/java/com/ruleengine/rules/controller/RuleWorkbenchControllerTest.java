@@ -178,4 +178,47 @@ class RuleWorkbenchControllerTest {
                         .contentType("application/json").content("{\"instruction\":\"  \"}"))
                 .andExpect(status().isBadRequest());
     }
+
+    private static final String GAPPY_ENVELOPE = """
+            {"ruleKey":"%s","envelope":{"ruleType":"DecisionTable","reason":"gap test",
+             "rule":{"hitPolicy":"FIRST",
+             "inputs":[{"name":"age","typeRef":"INTEGER"},{"name":"smoker","typeRef":"BOOLEAN"}],
+             "outputs":[{"name":"decision","typeRef":"ENUM","allowedValues":["承保","人工評估","拒保"]},
+                        {"name":"note","typeRef":"STRING"}],
+             "rules":[{"ruleId":"R1","priority":1,
+               "conditions":[{"field":"age","operator":"between","value":[18,50]},{"field":"smoker","operator":"equals","value":false}],
+               "results":[{"field":"decision","value":"承保"},{"field":"note","value":"ok"}]}]}}}""";
+
+    @Test
+    @DisplayName("缺口補成案例：影響報告的缺口帶條件；補列後多一列、決議為人工評估、其餘待填")
+    void gapCaseAppendsUnfilledRow() throws Exception {
+        String maker = token("maker");
+        MvcResult created = mvc.perform(post("/rules").header("Authorization", "Bearer " + maker)
+                        .contentType("application/json").content(GAPPY_ENVELOPE.formatted("wb.gap")))
+                .andExpect(status().isCreated()).andReturn();
+        long id = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        JsonNode sheet = reviewSheet(maker, id);
+        JsonNode gaps = sheet.at("/impact/analysis/gaps");
+        assertTrue(gaps.isArray() && gaps.size() > 0, "首版就該報出缺口");
+        JsonNode firstGap = gaps.get(0);
+        assertTrue(firstGap.has("message") && firstGap.has("conditions"), firstGap.toString());
+
+        MvcResult r = mvc.perform(post("/rules/" + id + "/gap-case").header("Authorization", "Bearer " + maker)
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("conditions", firstGap.get("conditions")))))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode suggestion = objectMapper.readTree(r.getResponse().getContentAsString());
+        JsonNode rules = suggestion.at("/proposed/rule/rules");
+        assertEquals(2, rules.size());
+        JsonNode added = rules.get(1);
+        assertEquals("R2", added.get("ruleId").asText());
+        assertEquals("人工評估", added.at("/results/0/value").asText());
+        assertFalse(added.at("/results/1").has("value"), "note 應留空待填");
+        assertTrue(suggestion.at("/validation/valid").asBoolean() == false, "待填列應被驗證標出");
+
+        mvc.perform(post("/rules/" + id + "/gap-case").header("Authorization", "Bearer " + token("checker"))
+                        .contentType("application/json").content("{\"conditions\":{\"age\":\"[51,120]\"}}"))
+                .andExpect(status().isForbidden());
+    }
 }

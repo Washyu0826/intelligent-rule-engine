@@ -24,6 +24,7 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
   const [liveAnalysis, setLiveAnalysis] = useState<ImpactAnalysis | undefined>();
   const [instruction, setInstruction] = useState('');
   const [suggestion, setSuggestion] = useState<ChangeSuggestion | null>(null);
+  const [suggestionTitle, setSuggestionTitle] = useState('');
   const [reason, setReason] = useState('');
   const [showSubmit, setShowSubmit] = useState(false);
   const [busy, setBusy] = useState('');
@@ -42,7 +43,7 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
           coverageRate: a.coverageRate,
           gapCount: a.gaps.length,
           overlapCount: a.overlaps.length,
-          gaps: a.gaps.map((g) => g.message),
+          gaps: a.gaps.map((g) => ({ message: g.message, conditions: g.conditions, volumeRatio: g.volumeRatio })),
           overlaps: a.overlaps.map((o) => o.message),
         });
       }
@@ -76,6 +77,13 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
   const askSuggestion = () =>
     run('suggest', async () => {
       setSuggestion(await workbenchApi.suggestChange(latest.id, instruction.trim()));
+      setSuggestionTitle('AI 的修改建議（尚未儲存）');
+    });
+
+  const fillGap = (conditions: Record<string, string>) =>
+    run('gap', async () => {
+      setSuggestion(await workbenchApi.gapCase(latest.id, conditions));
+      setSuggestionTitle('缺口補成案例（尚未儲存，結果待填）');
     });
 
   const adopt = () =>
@@ -165,7 +173,12 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
       )}
 
       {current && <RuleView envelope={current.after} />}
-      <ImpactPanel analysis={liveAnalysis} title="目前版本：缺口與重疊" />
+      <ImpactPanel
+        analysis={liveAnalysis}
+        title="目前版本：缺口與重疊"
+        onFillGap={editable && current?.after.ruleType === 'DecisionTable' ? fillGap : undefined}
+        busy={!!busy}
+      />
 
       {editable && (
         <div className={`${card} p-4 space-y-2`}>
@@ -193,10 +206,10 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
 
       {suggestion && current && (
         <div className="space-y-3">
-          <div className={`text-sm font-semibold ${textPrimary}`}>AI 的修改建議（尚未儲存）</div>
+          <div className={`text-sm font-semibold ${textPrimary}`}>{suggestionTitle || '修改建議（尚未儲存）'}</div>
           {suggestion.validation && suggestion.validation.valid === false && (
             <div className="text-xs text-red-600">
-              AI 產出未通過驗證：{(suggestion.validation.errors ?? []).map((e) => e.message).join('；') || '請調整描述後重試'}
+              尚未通過驗證（存成草稿後仍可修改）：{(suggestion.validation.errors ?? []).map((e) => e.message).join('；') || '請調整後重試'}
             </div>
           )}
           <DiffView current={suggestion.proposed} previous={current.after} />

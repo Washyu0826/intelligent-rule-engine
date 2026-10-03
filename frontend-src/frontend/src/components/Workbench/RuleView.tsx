@@ -8,8 +8,9 @@ function condValue(c: RuleCondition): string {
 }
 
 function valueText(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '（待填）';
   if (typeof v === 'boolean') return v ? '是' : '否';
-  return String(v ?? '');
+  return String(v);
 }
 
 export default function RuleView({ envelope }: { envelope: RuleEnvelope }) {
@@ -96,11 +97,14 @@ export default function RuleView({ envelope }: { envelope: RuleEnvelope }) {
                       </td>
                     );
                   })}
-                  {resultFields.map((f) => (
-                    <td key={f} className="py-1 pr-3">
-                      {valueText(r.results.find((x) => x.field === f)?.value) || '—'}
-                    </td>
-                  ))}
+                  {resultFields.map((f) => {
+                    const res = r.results.find((x) => x.field === f);
+                    return (
+                      <td key={f} className="py-1 pr-3">
+                        {res ? valueText(res.value) : '—'}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
