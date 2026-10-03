@@ -99,6 +99,13 @@ public class RuleVersionEntity {
     @Column(name = "review_comment", columnDefinition = "text")
     private String reviewComment;
 
+    @Column(name = "submit_reason", columnDefinition = "text")
+    private String submitReason;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "impact_report")
+    private String impactReport;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 

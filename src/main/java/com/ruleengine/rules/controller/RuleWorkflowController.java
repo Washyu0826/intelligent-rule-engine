@@ -5,6 +5,7 @@ import com.ruleengine.rules.domain.envelope.RuleEnvelope;
 import com.ruleengine.rules.persistence.rulestore.RuleVersionEntity;
 import com.ruleengine.rules.service.rulestore.ReviewWorkflowService;
 import com.ruleengine.rules.service.rulestore.RuleStoreService;
+import com.ruleengine.rules.service.rulestore.WorkbenchService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -44,6 +45,7 @@ public class RuleWorkflowController {
 
     private final RuleStoreService store;
     private final ReviewWorkflowService workflow;
+    private final WorkbenchService workbench;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
     // ================================================================
@@ -86,10 +88,13 @@ public class RuleWorkflowController {
     // 狀態轉移（maker 側）
     // ================================================================
 
+    public record SubmitRequest(@NotBlank String reason) {}
+
     @PostMapping("/{id}/submit")
     @PreAuthorize("hasRole('MAKER')")
-    public VersionView submit(@PathVariable Long id, Authentication auth) {
-        return VersionView.of(workflow.submit(id, auth.getName()));
+    public VersionView submit(@PathVariable Long id, @Valid @RequestBody SubmitRequest request,
+                              Authentication auth) {
+        return VersionView.of(workbench.submit(id, auth.getName(), request.reason()));
     }
 
     @PostMapping("/{id}/withdraw")
@@ -150,12 +155,12 @@ public class RuleWorkflowController {
     public record VersionView(Long id, String ruleKey, int versionNo, String ruleType,
                               String status, Long previousVersionId,
                               String createdBy, String submittedBy, String reviewedBy,
-                              String reviewComment, OffsetDateTime updatedAt) {
+                              String reviewComment, String submitReason, OffsetDateTime updatedAt) {
         static VersionView of(RuleVersionEntity v) {
             return new VersionView(v.getId(), v.getRuleKey(), v.getVersionNo(), v.getRuleType(),
                     v.getStatus().name(), v.getPreviousVersionId(),
                     v.getCreatedBy(), v.getSubmittedBy(), v.getReviewedBy(),
-                    v.getReviewComment(), v.getUpdatedAt());
+                    v.getReviewComment(), v.getSubmitReason(), v.getUpdatedAt());
         }
     }
 

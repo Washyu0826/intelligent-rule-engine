@@ -36,6 +36,14 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/auth': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
+      '/rules': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
     },
   },
   build: {

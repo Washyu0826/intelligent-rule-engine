@@ -9,6 +9,7 @@ import WelcomeGuide from './components/common/WelcomeGuide';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import InputPage from './components/InputPage/InputPage';
 import ResultDashboard from './components/Dashboard/ResultDashboard';
+import WorkbenchTab from './components/Workbench/WorkbenchTab';
 import type { PageView, InputMode } from './types';
 
 const V314Preview = lazy(() => import('./components/V314Preview/V314Preview'));
@@ -25,6 +26,7 @@ export default function App() {
   const { loading, steps, result, error, generate, reset } = useRuleGeneration();
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState<boolean>(readPreviewMode);
+  const [view, setView] = useState<'generate' | 'workbench'>('generate');
   const page: PageView = result ? 'dashboard' : 'input';
 
   // 監聽 popstate（用戶按瀏覽器上一頁/下一頁）以同步 preview mode
@@ -127,6 +129,29 @@ export default function App() {
         </div>
       </header>
 
+      {/* ── 分頁導覽 ── */}
+      {!previewMode && (
+        <nav aria-label="主要功能" className="border-b dark:border-border border-light-border dark:bg-surface-0 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex gap-1">
+            {([['generate', '規則生成'], ['workbench', '審核工作台']] as const).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setView(key)}
+                aria-current={view === key ? 'page' : undefined}
+                className={`px-4 py-2.5 text-sm font-medium cursor-pointer border-b-2 -mb-px transition-colors ${
+                  view === key
+                    ? 'border-[var(--color-group-green-600)] dark:text-text-primary text-light-text-primary'
+                    : 'border-transparent dark:text-text-tertiary text-light-text-tertiary hover:opacity-80'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </nav>
+      )}
+
       {/* ── Main ── */}
       <main role="main" aria-label={previewMode ? 'v3.14 預覽' : page === 'input' ? '規則輸入' : '結果分析'} className="flex-1 px-4 sm:px-6">
         {previewMode ? (
@@ -134,6 +159,10 @@ export default function App() {
             <Suspense fallback={<div className="py-20 text-center text-sm dark:text-text-tertiary text-light-text-tertiary">載入 v3.14 預覽中…</div>}>
               <V314Preview onExit={exitPreview} />
             </Suspense>
+          </ErrorBoundary>
+        ) : view === 'workbench' ? (
+          <ErrorBoundary label="審核工作台">
+            <WorkbenchTab />
           </ErrorBoundary>
         ) : page === 'input' ? (
           <ErrorBoundary label="規則輸入">

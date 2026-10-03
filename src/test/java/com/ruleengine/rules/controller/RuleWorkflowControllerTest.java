@@ -94,7 +94,7 @@ class RuleWorkflowControllerTest {
         void itemLayer() throws Exception {
             String admin = token("admin");
             long id = createDraft(admin, "mx.selfreview");
-            mvc.perform(post("/rules/" + id + "/submit")
+            mvc.perform(post("/rules/" + id + "/submit").contentType("application/json").content("{\"reason\":\"測試送審\"}")
                             .header("Authorization", "Bearer " + admin))
                     .andExpect(status().isOk());
             // admin 有 CHECKER 角色（過方法層），但件層擋下
@@ -119,7 +119,7 @@ class RuleWorkflowControllerTest {
 
             // maker：建草稿 + 送審
             long v1 = createDraft(maker, key);
-            mvc.perform(post("/rules/" + v1 + "/submit").header("Authorization", "Bearer " + maker))
+            mvc.perform(post("/rules/" + v1 + "/submit").contentType("application/json").content("{\"reason\":\"測試送審\"}").header("Authorization", "Bearer " + maker))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REVIEW"))
                     .andExpect(jsonPath("$.submittedBy").value("maker"));
@@ -152,7 +152,7 @@ class RuleWorkflowControllerTest {
 
             // 第二版走完流程 → v1 自動退役
             long v2 = createDraft(maker, key);
-            mvc.perform(post("/rules/" + v2 + "/submit").header("Authorization", "Bearer " + maker))
+            mvc.perform(post("/rules/" + v2 + "/submit").contentType("application/json").content("{\"reason\":\"測試送審\"}").header("Authorization", "Bearer " + maker))
                     .andExpect(status().isOk());
             mvc.perform(post("/rules/" + v2 + "/approve").header("Authorization", "Bearer " + checker)
                             .contentType("application/json").content("{\"comment\":\"v2\"}"))
@@ -175,7 +175,7 @@ class RuleWorkflowControllerTest {
             String checker = token("checker");
             long id = createDraft(maker, "journey.reject-" + System.nanoTime());
 
-            mvc.perform(post("/rules/" + id + "/submit").header("Authorization", "Bearer " + maker))
+            mvc.perform(post("/rules/" + id + "/submit").contentType("application/json").content("{\"reason\":\"測試送審\"}").header("Authorization", "Bearer " + maker))
                     .andExpect(status().isOk());
             // 不帶意見退回 → 409
             mvc.perform(post("/rules/" + id + "/reject").header("Authorization", "Bearer " + checker)

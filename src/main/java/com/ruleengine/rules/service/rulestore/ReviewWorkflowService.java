@@ -49,6 +49,7 @@ public class ReviewWorkflowService {
 
     public static class VersionNotFoundException extends RuntimeException {
         public VersionNotFoundException(Long id) { super("規則版本 " + id + " 不存在"); }
+        public VersionNotFoundException(String message) { super(message); }
     }
 
     // ================================================================
