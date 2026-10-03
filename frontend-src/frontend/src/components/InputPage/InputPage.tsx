@@ -203,6 +203,7 @@ export default function InputPage({ loading, steps, error, onGenerate, onDismiss
                 { value: 'auto', label: 'AI 推薦' },
                 { value: 'DecisionTable', label: '決策表' },
                 { value: 'DecisionTree', label: '決策樹' },
+                { value: 'ScoreCard', label: '評分卡' },
               ].map(opt => (
                 <button
                   key={opt.value}

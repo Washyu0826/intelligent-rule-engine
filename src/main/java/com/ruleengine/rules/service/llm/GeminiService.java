@@ -244,6 +244,12 @@ public class GeminiService implements LlmProvider {
      * @param attempt 當前 attempt（0=首次, 1~3=retry）
      * @return 生成的文字，失敗回 null
      */
+    @Override
+    public String classifyRuleType(String prompt) {
+        if (!isAvailable()) return null;
+        return callGeminiApi(prompt, 1);
+    }
+
     private String callGeminiApi(String prompt, int attempt) {
         String url = String.format(
                 "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",

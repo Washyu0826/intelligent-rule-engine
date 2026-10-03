@@ -177,6 +177,12 @@ public class ClaudeService implements LlmProvider {
     // Anthropic Messages API 呼叫
     // ========================================================================
 
+    @Override
+    public String classifyRuleType(String prompt) {
+        if (!isAvailable()) return null;
+        return callClaudeApi("你是規則型態分類器，只回傳 JSON，不要任何其他文字。", prompt, 1);
+    }
+
     private String callClaudeApi(String systemPrompt, String userPrompt, int attempt) {
         try {
             // Prompt Caching: 系統提示詞用 cache_control 標記，避免重複傳輸

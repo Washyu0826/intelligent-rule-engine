@@ -8,6 +8,7 @@ import LoginControl from './components/common/LoginControl';
 import WelcomeGuide from './components/common/WelcomeGuide';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import InputPage from './components/InputPage/InputPage';
+import ClarifyDialog from './components/InputPage/ClarifyDialog';
 import ResultDashboard from './components/Dashboard/ResultDashboard';
 import WorkbenchTab from './components/Workbench/WorkbenchTab';
 import type { PageView, InputMode } from './types';
@@ -23,7 +24,7 @@ function readPreviewMode(): boolean {
 
 export default function App() {
   const { mode, cycle } = useTheme();
-  const { loading, steps, result, error, generate, reset } = useRuleGeneration();
+  const { loading, steps, result, error, generate, reset, clarification, answerClarification, dismissClarification, regenerateAs } = useRuleGeneration();
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState<boolean>(readPreviewMode);
   const [view, setView] = useState<'generate' | 'workbench'>('generate');
@@ -69,6 +70,13 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col" role="application" aria-label="Rules MCP Server">
       <WelcomeGuide />
+      {clarification && (
+        <ClarifyDialog
+          recommend={clarification.recommend}
+          onPick={answerClarification}
+          onCancel={dismissClarification}
+        />
+      )}
       {/* ── Header — 官方金控集團 logo（白底 / 深綠底色帶） ── */}
       <header role="banner" className="
         sticky top-0 z-50 backdrop-blur-xl
@@ -176,7 +184,7 @@ export default function App() {
           </ErrorBoundary>
         ) : result ? (
           <ErrorBoundary label="結果分析">
-            <ResultDashboard result={result} onBack={handleBack} />
+            <ResultDashboard result={result} onBack={handleBack} onRetype={regenerateAs} />
           </ErrorBoundary>
         ) : null}
       </main>

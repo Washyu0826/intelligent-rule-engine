@@ -11,11 +11,21 @@ export interface TypeCandidate {
   score: number;
 }
 
+export interface ClarifyOption {
+  label: string;
+  ruleType: string;
+}
+
 export interface RecommendResponse {
   recommendedRuleType: string;
   reason: string;
   confidence: number;
   alternatives: TypeCandidate[];
+  /** structure / keyword / llm / default */
+  method?: string;
+  needsClarification?: boolean;
+  clarifyingQuestion?: string;
+  clarifyOptions?: ClarifyOption[];
 }
 
 // ========================================

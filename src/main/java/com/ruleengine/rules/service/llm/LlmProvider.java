@@ -83,6 +83,16 @@ public interface LlmProvider {
     }
 
     /**
+     * 規則型態二選一（決策表／決策樹／評分卡）。只在啟發式信心不足時由 RuleRecommender 呼叫。
+     *
+     * @param prompt 已組好的分類提示詞，要求模型只回 {"ruleType":..., "reason":...}
+     * @return 模型回傳的 JSON 文字；不支援或失敗時回傳 null
+     */
+    default String classifyRuleType(String prompt) {
+        return null;
+    }
+
+    /**
      * 檢查此 LLM 提供者是否可用。
      *
      * @return true 若服務可用（API key 已設定、服務連線等）

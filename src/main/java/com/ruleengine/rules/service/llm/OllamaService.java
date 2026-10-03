@@ -134,6 +134,18 @@ public class OllamaService implements LlmProvider {
     }
 
     @Override
+    public String classifyRuleType(String prompt) {
+        if (baseUrl == null || baseUrl.isBlank()) return null;
+        Map<String, Object> schema = Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "ruleType", Map.of("type", "string", "enum", List.of("DecisionTable", "DecisionTree", "ScoreCard")),
+                        "reason", Map.of("type", "string")),
+                "required", List.of("ruleType", "reason"));
+        return callOllamaApiWithSchema(prompt, schema);
+    }
+
+    @Override
     public String callWithSchema(String prompt, Map<String, Object> jsonSchema) {
         if (baseUrl == null || baseUrl.isBlank()) return null;
         Map<String, Object> schema = jsonSchema != null ? jsonSchema : buildRuleEnvelopeSchema();

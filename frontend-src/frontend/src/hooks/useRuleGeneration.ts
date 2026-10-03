@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { api } from '../api/rulesApi';
 import type {
   GenerationResult,
@@ -21,11 +21,26 @@ const INITIAL_STEPS: GenerationStep[] = [
   { id: 'analyze', label: '分析情境覆蓋與交付風險', status: 'pending' },
 ];
 
+export interface PendingClarification {
+  recommend: RecommendResponse;
+  description: string;
+  provider?: string;
+}
+
+interface LastArgs {
+  description: string;
+  mode: 'natural' | 'json';
+  jsonInput?: string;
+  provider?: string;
+}
+
 export function useRuleGeneration() {
   const [loading, setLoading] = useState(false);
   const [steps, setSteps] = useState<GenerationStep[]>(INITIAL_STEPS);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
+  const [clarification, setClarification] = useState<PendingClarification | null>(null);
+  const lastArgs = useRef<LastArgs | null>(null);
 
   const updateStep = (id: string, status: GenerationStep['status']) => {
     setSteps((prev) =>
@@ -44,6 +59,7 @@ export function useRuleGeneration() {
     async (description: string, mode: 'natural' | 'json', jsonInput?: string, provider?: string, forceRuleType?: string) => {
       reset();
       setLoading(true);
+      lastArgs.current = { description, mode, jsonInput, provider };
 
       // 視覺停頓，讓使用者看到 5 格進度條一格一格跑過（JSON 模式的步驟太快會被 React 合併成一次 render）
       const tick = (ms = 280) => new Promise<void>(r => setTimeout(r, ms));
@@ -59,6 +75,14 @@ export function useRuleGeneration() {
           await tick();
         }
         updateStep('recommend', 'done');
+
+        // 連 LLM 都判不出型態：先問一題，使用者選了再生成
+        if (mode === 'natural' && !forceRuleType && recommend?.needsClarification) {
+          setClarification({ recommend, description, provider });
+          setSteps(INITIAL_STEPS);
+          setLoading(false);
+          return null;
+        }
 
         // ── Step 2-3: Generate ──
         updateStep('generate', 'active');
@@ -209,5 +233,29 @@ export function useRuleGeneration() {
     [reset]
   );
 
-  return { loading, steps, result, error, generate, reset };
+  const answerClarification = useCallback(
+    (ruleType: string) => {
+      const c = clarification;
+      setClarification(null);
+      if (!c) return;
+      void generate(c.description, 'natural', undefined, c.provider, ruleType).catch(() => {});
+    },
+    [clarification, generate]
+  );
+
+  const dismissClarification = useCallback(() => setClarification(null), []);
+
+  const regenerateAs = useCallback(
+    (ruleType: string) => {
+      const a = lastArgs.current;
+      if (!a) return;
+      void generate(a.description, a.mode, a.jsonInput, a.provider, ruleType).catch(() => {});
+    },
+    [generate]
+  );
+
+  return {
+    loading, steps, result, error, generate, reset,
+    clarification, answerClarification, dismissClarification, regenerateAs,
+  };
 }

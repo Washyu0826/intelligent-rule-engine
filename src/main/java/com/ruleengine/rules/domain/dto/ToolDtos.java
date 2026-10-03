@@ -30,6 +30,18 @@ public final class ToolDtos {
         private String reason;
         private double confidence;
         private List<TypeCandidate> alternatives;
+        /** 判定依據：structure（規格結構）/ keyword（字詞）/ llm（模型二選一）/ default（無訊號） */
+        private String method;
+        /** 連 LLM 都判不出時為 true，前端應先問 clarifyingQuestion 再生成 */
+        private Boolean needsClarification;
+        private String clarifyingQuestion;
+        private List<ClarifyOption> clarifyOptions;
+    }
+
+    @Data @Builder @NoArgsConstructor @AllArgsConstructor
+    public static class ClarifyOption {
+        private String label;
+        private String ruleType;
     }
 
     @Data @Builder @NoArgsConstructor @AllArgsConstructor

@@ -3,8 +3,13 @@ package com.ruleengine.rules.service.recommender;
 import com.ruleengine.rules.domain.RuleType;
 import com.ruleengine.rules.domain.dto.ToolDtos.*;
 import com.ruleengine.rules.registry.RuleTypeRegistry;
+import com.ruleengine.rules.service.llm.LlmProvider;
+import com.ruleengine.rules.service.llm.LlmProviderRegistry;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -29,7 +34,21 @@ import java.util.regex.Pattern;
 @Slf4j
 public class RuleRecommender {
 
+    /** 啟發式信心低於此值才呼叫 LLM 二選一 */
+    private static final double LLM_FALLBACK_THRESHOLD = 0.55;
+    /** LLM 之後仍低於此值就反問使用者 */
+    private static final double CLARIFY_THRESHOLD = 0.45;
+    private static final int LLM_PROMPT_MAX_CHARS = 4000;
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private final RuleTypeRegistry registry;
+
+    private LlmProviderRegistry llmProviderRegistry;
+
+    @Autowired(required = false)
+    public void setLlmProviderRegistry(LlmProviderRegistry registry) {
+        this.llmProviderRegistry = registry;
+    }
 
     // ========== 語言特徵模式 ==========
 
@@ -178,9 +197,10 @@ public class RuleRecommender {
                     .build();
         }
 
-        // 計算各型態的匹配分數
-        double tableScore = calculateScore(description, TABLE_PATTERNS);
-        double treeScore = calculateScore(description, TREE_PATTERNS);
+        // 計算各型態的匹配分數：字詞特徵 + 整段規格的結構訊號
+        StructureSignals structure = analyzeStructure(description);
+        double tableScore = calculateScore(description, TABLE_PATTERNS) + structure.tableBoost();
+        double treeScore = calculateScore(description, TREE_PATTERNS) + structure.treeBoost();
         double scoreCardScore = calculateScore(description, SCORECARD_PATTERNS);
 
         // 組裝候選
@@ -235,12 +255,165 @@ public class RuleRecommender {
                 String.format("%.2f", treeScore),
                 String.format("%.2f", scoreCardScore));
 
-        return RecommendResponse.builder()
+        String method = maxScore <= 0 ? "default"
+                : structureDecided(best.getRuleType(), structure) ? "structure" : "keyword";
+        RecommendResponse response = RecommendResponse.builder()
                 .recommendedRuleType(best.getRuleType())
-                .reason(best.getReason())
+                .reason(plainReason(best.getRuleType(), method, structure, best.getReason()))
                 .confidence(Math.round(confidence * 100.0) / 100.0)
                 .alternatives(alternatives)
+                .method(method)
                 .build();
+
+        if (response.getConfidence() < LLM_FALLBACK_THRESHOLD) {
+            applyLlmClassification(description, response);
+        }
+        if (response.getConfidence() < CLARIFY_THRESHOLD) {
+            response.setNeedsClarification(true);
+            response.setClarifyingQuestion("這些條件是同時比對（每一列是一種組合），還是有先後順序（先看一個條件，再依結果看下一個）？");
+            response.setClarifyOptions(List.of(
+                    ClarifyOption.builder().label("同時比對，像對照表").ruleType("DecisionTable").build(),
+                    ClarifyOption.builder().label("有先後順序，像流程圖").ruleType("DecisionTree").build(),
+                    ClarifyOption.builder().label("各項目分別計分再加總").ruleType("ScoreCard").build()));
+        }
+        return response;
+    }
+
+    // ========== 結構訊號（整段規格） ==========
+
+    private static final List<Pattern> OUTLINE_MARKERS = List.of(
+            Pattern.compile("^\\s*\\d+[.．、](?!\\d)"),
+            Pattern.compile("^\\s*[（(]\\d+[）)]"),
+            Pattern.compile("^\\s*[A-Za-z][.．、]"),
+            Pattern.compile("^\\s*[（(][a-z][）)]"),
+            Pattern.compile("^\\s*(?:I|II|III|IV|V|VI|VII|VIII|IX|X)[.．、]"),
+            Pattern.compile("^\\s*[一二三四五六七八九十]+[、.．]"),
+            Pattern.compile("^\\s*[甲乙丙丁戊己庚辛][、.．]")
+    );
+    private static final Pattern LEAF_RESULT = Pattern.compile("-{2,}\\s*\\S+\\s*[。．]?\\s*$");
+    private static final Pattern ENUM_DIMENSION = Pattern.compile("[（(][^（）()]*[／/、][^（）()]*[）)]");
+    private static final Pattern NUMBERED_RULE_LINE = Pattern.compile("^\\s*\\d+[.．、]?\\s*若.*則");
+    private static final Pattern CHECK_LINE = Pattern.compile("^\\s*(?:條件|檢核)\\s*\\d+(?:\\.\\d+)?\\s*[：:]");
+    private static final Pattern OUTPUT_WORD = Pattern.compile("輸出|結果|回傳");
+
+    record StructureSignals(double tableBoost, double treeBoost, int outlineDepth,
+                            int dimensionCount, int ruleLines, int checkLines) {}
+
+    static StructureSignals analyzeStructure(String description) {
+        Set<Integer> markerKinds = new HashSet<>();
+        Set<Integer> indents = new HashSet<>();
+        int leafResults = 0, ruleLines = 0, checkLines = 0;
+        for (String line : description.split("\\R")) {
+            if (line.isBlank()) continue;
+            for (int k = 0; k < OUTLINE_MARKERS.size(); k++) {
+                if (OUTLINE_MARKERS.get(k).matcher(line).find()) {
+                    markerKinds.add(k);
+                    indents.add(leadingWidth(line));
+                    break;
+                }
+            }
+            if (LEAF_RESULT.matcher(line).find()) leafResults++;
+            if (NUMBERED_RULE_LINE.matcher(line).find()) ruleLines++;
+            if (CHECK_LINE.matcher(line).find()) checkLines++;
+        }
+        int depth = Math.max(markerKinds.size(), indents.size());
+        int dimensions = 0;
+        var m = ENUM_DIMENSION.matcher(description);
+        while (m.find()) dimensions++;
+
+        double tree = 0, table = 0;
+        if (depth >= 3) tree += 1.0;
+        else if (depth == 2) tree += 0.5;
+        if (depth >= 2 && leafResults >= 3) tree += 0.2;
+
+        if (dimensions >= 2 && OUTPUT_WORD.matcher(description).find()) table += 0.6;
+        if (ruleLines >= 2) table += 0.5;
+        if (checkLines >= 2) table += 0.4;
+
+        return new StructureSignals(table, tree, depth, dimensions, ruleLines, checkLines);
+    }
+
+    private static int leadingWidth(String line) {
+        int w = 0;
+        for (char c : line.toCharArray()) {
+            if (c == ' ') w++;
+            else if (c == '\t') w += 4;
+            else if (c == '　') w += 2;
+            else break;
+        }
+        return w;
+    }
+
+    private static boolean structureDecided(String ruleType, StructureSignals s) {
+        return (RuleType.DECISION_TREE.getCode().equals(ruleType) && s.treeBoost() > 0)
+                || (RuleType.DECISION_TABLE.getCode().equals(ruleType) && s.tableBoost() > 0);
+    }
+
+    /** 給業務使用者看的一句話理由（Q5：不列分數細節）。 */
+    private static String plainReason(String ruleType, String method, StructureSignals s, String keywordReason) {
+        if ("default".equals(method)) {
+            return "描述裡看不出條件是同時比對還是有先後，先以決策表呈現。";
+        }
+        if (RuleType.DECISION_TREE.getCode().equals(ruleType)) {
+            return s.treeBoost() > 0
+                    ? "規格有 " + s.outlineDepth() + " 層分級，後面的條件要先看前面的結果，適合用決策樹。"
+                    : "條件有先後順序，後面的判斷依前面的結果而定，適合用決策樹。";
+        }
+        if (RuleType.DECISION_TABLE.getCode().equals(ruleType)) {
+            if (s.checkLines() >= 2 || s.ruleLines() >= 2) {
+                return "是一條條獨立的檢核，各自判斷、各自拋訊息，適合用決策表（多重命中）。";
+            }
+            if (s.dimensionCount() >= 2) {
+                return "有 " + s.dimensionCount() + " 個條件欄位平行組合、對應固定的輸出，適合用決策表。";
+            }
+            return "多個條件平行組合對應結果，沒有先後，適合用決策表。";
+        }
+        if (RuleType.SCORE_CARD.getCode().equals(ruleType)) {
+            return "各項目分別給分再加總，依分數帶決定結果，適合用評分卡。";
+        }
+        return keywordReason;
+    }
+
+    // ========== LLM 二選一（低信心才用） ==========
+
+    private void applyLlmClassification(String description, RecommendResponse response) {
+        LlmProvider provider = llmProviderRegistry != null ? llmProviderRegistry.getDefault() : null;
+        if (provider == null || !provider.isAvailable()) return;
+        try {
+            String raw = provider.classifyRuleType(buildClassifyPrompt(description));
+            if (raw == null || raw.isBlank()) return;
+            String cleaned = raw.strip();
+            if (cleaned.startsWith("```")) {
+                cleaned = cleaned.replaceAll("^```(?:json)?\\s*", "").replaceAll("\\s*```$", "");
+            }
+            JsonNode node = JSON.readTree(cleaned);
+            RuleType type = RuleType.fromString(node.path("ruleType").asText(""));
+            if (!registry.isSupported(type)) return;
+            String reason = node.path("reason").asText("").strip();
+            response.setRecommendedRuleType(type.getCode());
+            response.setReason(reason.isEmpty() ? plainReason(type.getCode(), "llm", analyzeStructure(description), "") : reason);
+            response.setConfidence(Math.max(response.getConfidence(), 0.6));
+            response.setMethod("llm");
+            log.info("Recommend: LLM fallback via {} → {}", provider.getProviderName(), type.getCode());
+        } catch (Exception e) {
+            log.warn("Recommend: LLM fallback failed, keeping heuristic result: {}", e.getMessage());
+        }
+    }
+
+    static String buildClassifyPrompt(String description) {
+        String body = description.length() > LLM_PROMPT_MAX_CHARS
+                ? description.substring(0, LLM_PROMPT_MAX_CHARS) + "…" : description;
+        return """
+                判斷下面這段業務規格最適合用哪一種規則型態，只回 JSON：
+                {"ruleType":"DecisionTable 或 DecisionTree 或 ScoreCard","reason":"一句話，30 字內，用業務口吻"}
+
+                定義：
+                - DecisionTable：多個條件平行比對，每一列是一種條件組合對應一組輸出；條件之間沒有先後。
+                - DecisionTree：條件有先後或層級，後面的條件只在前面某個分支下才需要看；像流程圖或分級大綱。
+                - ScoreCard：各項目分別給分，加總後依分數帶決定結果。
+
+                規格：
+                """ + body;
     }
 
     // ========== Internal ==========

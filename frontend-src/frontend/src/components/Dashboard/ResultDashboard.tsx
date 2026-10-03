@@ -20,6 +20,7 @@ const GapAnalysis = lazy(() => import('./GapAnalysis'));
 const SimplificationHints = lazy(() => import('./SimplificationHints'));
 const ScenarioExpansionTable = lazy(() => import('./ScenarioExpansionTable'));
 const DeliveryPositionPanel = lazy(() => import('./DeliveryPositionPanel'));
+const TypeVerdict = lazy(() => import('./TypeVerdict'));
 
 // Lazy-loaded DecisionTree visualization
 const DecisionTreeView = lazy(() => import('./DecisionTreeView'));
@@ -106,6 +107,7 @@ const TabIcons: Record<TabId, React.ReactNode> = {
 interface Props {
   result: GenerationResult;
   onBack: () => void;
+  onRetype?: (ruleType: string) => void;
 }
 
 // ════════════════════════════════════════════
@@ -225,7 +227,7 @@ function TabBar({
 // ════════════════════════════════════════════
 // Tab Content with slide animation
 // ════════════════════════════════════════════
-function TabContent({ result }: { result: GenerationResult }) {
+function TabContent({ result, onRetype }: { result: GenerationResult; onRetype?: (ruleType: string) => void }) {
   const { state } = useDashboard();
   const { generate, recommend, validate, analyze, durationMs, originalDescription } = result;
 
@@ -253,6 +255,7 @@ function TabContent({ result }: { result: GenerationResult }) {
         {/* ─── OVERVIEW ─── */}
         {state.activeTab === 'overview' && (
           <Suspense fallback={tabFallback}>
+            <TypeVerdict recommend={recommend} ruleType={generate.ruleType} onRetype={onRetype} />
             <DeliveryPositionPanel envelope={generate} />
 
             {/* v3.12: 業務總覽 — 非工程使用者第一眼理解，放在最上方 */}
@@ -401,7 +404,7 @@ function TabContent({ result }: { result: GenerationResult }) {
 // ════════════════════════════════════════════
 // DashboardInner (consumes context)
 // ════════════════════════════════════════════
-function DashboardInner({ result, onBack }: Props) {
+function DashboardInner({ result, onBack, onRetype }: Props) {
   const { generate, validate, analyze, confidence, durationMs } = result;
   const isValid = validate?.valid ?? true;
   const evaluation = generate?.evaluation;
@@ -509,7 +512,7 @@ function DashboardInner({ result, onBack }: Props) {
       </div>
 
       {/* ── Tab Content ── */}
-      <TabContent result={result} />
+      <TabContent result={result} onRetype={onRetype} />
     </div>
   );
 }
@@ -517,10 +520,10 @@ function DashboardInner({ result, onBack }: Props) {
 // ════════════════════════════════════════════
 // Exported Component (wraps with Provider)
 // ════════════════════════════════════════════
-export default function ResultDashboard({ result, onBack }: Props) {
+export default function ResultDashboard({ result, onBack, onRetype }: Props) {
   return (
     <DashboardProvider>
-      <DashboardInner result={result} onBack={onBack} />
+      <DashboardInner result={result} onBack={onBack} onRetype={onRetype} />
     </DashboardProvider>
   );
 }
