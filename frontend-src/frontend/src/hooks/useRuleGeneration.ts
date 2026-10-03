@@ -6,6 +6,7 @@ import type {
   ApiError,
   RuleEnvelope,
   RecommendResponse,
+  SuggestResponse,
   ValidateResponse,
   AnalyzeResponse,
   GroundingReport,
@@ -27,6 +28,21 @@ export interface PendingClarification {
   provider?: string;
 }
 
+export interface PendingFieldConfirm {
+  suggest: SuggestResponse;
+  description: string;
+  provider?: string;
+  ruleType?: string;
+}
+
+export interface GenerateOptions {
+  /** 使用者已確認（或跳過）欄位，不再彈第 1 步 */
+  skipFieldConfirm?: boolean;
+}
+
+/** 整段規格（超過這個長度）預設走兩步：先確認欄位再生列 */
+const FIELD_CONFIRM_MIN_CHARS = 120;
+
 interface LastArgs {
   description: string;
   mode: 'natural' | 'json';
@@ -40,6 +56,7 @@ export function useRuleGeneration() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<ApiError | null>(null);
   const [clarification, setClarification] = useState<PendingClarification | null>(null);
+  const [fieldConfirm, setFieldConfirm] = useState<PendingFieldConfirm | null>(null);
   const lastArgs = useRef<LastArgs | null>(null);
 
   const updateStep = (id: string, status: GenerationStep['status']) => {
@@ -56,7 +73,7 @@ export function useRuleGeneration() {
   }, []);
 
   const generate = useCallback(
-    async (description: string, mode: 'natural' | 'json', jsonInput?: string, provider?: string, forceRuleType?: string) => {
+    async (description: string, mode: 'natural' | 'json', jsonInput?: string, provider?: string, forceRuleType?: string, options?: GenerateOptions) => {
       reset();
       setLoading(true);
       lastArgs.current = { description, mode, jsonInput, provider };
@@ -82,6 +99,21 @@ export function useRuleGeneration() {
           setSteps(INITIAL_STEPS);
           setLoading(false);
           return null;
+        }
+
+        // 整段規格：先讓使用者確認欄位與輸出（Q29），確認後再生列
+        if (mode === 'natural' && !options?.skipFieldConfirm && description.length >= FIELD_CONFIRM_MIN_CHARS) {
+          try {
+            const suggest = await api.suggest(description);
+            if ((suggest.detectedInputs?.length ?? 0) > 0 || (suggest.detectedOutputs?.length ?? 0) > 0) {
+              setFieldConfirm({ suggest, description, provider, ruleType: forceRuleType || recommend?.recommendedRuleType });
+              setSteps(INITIAL_STEPS);
+              setLoading(false);
+              return null;
+            }
+          } catch {
+            // 偵測失敗就直接生成
+          }
         }
 
         // ── Step 2-3: Generate ──
@@ -245,11 +277,26 @@ export function useRuleGeneration() {
 
   const dismissClarification = useCallback(() => setClarification(null), []);
 
+  const confirmFields = useCallback(
+    (fieldBlock: string | null) => {
+      const f = fieldConfirm;
+      setFieldConfirm(null);
+      if (!f) return;
+      const description = fieldBlock ? `${f.description}
+
+${fieldBlock}` : f.description;
+      void generate(description, 'natural', undefined, f.provider, f.ruleType, { skipFieldConfirm: true }).catch(() => {});
+    },
+    [fieldConfirm, generate]
+  );
+
+  const dismissFieldConfirm = useCallback(() => setFieldConfirm(null), []);
+
   const regenerateAs = useCallback(
     (ruleType: string) => {
       const a = lastArgs.current;
       if (!a) return;
-      void generate(a.description, a.mode, a.jsonInput, a.provider, ruleType).catch(() => {});
+      void generate(a.description, a.mode, a.jsonInput, a.provider, ruleType, { skipFieldConfirm: true }).catch(() => {});
     },
     [generate]
   );
@@ -257,5 +304,6 @@ export function useRuleGeneration() {
   return {
     loading, steps, result, error, generate, reset,
     clarification, answerClarification, dismissClarification, regenerateAs,
+    fieldConfirm, confirmFields, dismissFieldConfirm,
   };
 }

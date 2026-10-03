@@ -9,6 +9,8 @@ import WelcomeGuide from './components/common/WelcomeGuide';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import InputPage from './components/InputPage/InputPage';
 import ClarifyDialog from './components/InputPage/ClarifyDialog';
+import FieldConfirmDialog from './components/InputPage/FieldConfirmDialog';
+import { describeFields } from './components/InputPage/fieldSpec';
 import ResultDashboard from './components/Dashboard/ResultDashboard';
 import WorkbenchTab from './components/Workbench/WorkbenchTab';
 import type { PageView, InputMode } from './types';
@@ -24,7 +26,11 @@ function readPreviewMode(): boolean {
 
 export default function App() {
   const { mode, cycle } = useTheme();
-  const { loading, steps, result, error, generate, reset, clarification, answerClarification, dismissClarification, regenerateAs } = useRuleGeneration();
+  const {
+    loading, steps, result, error, generate, reset,
+    clarification, answerClarification, dismissClarification, regenerateAs,
+    fieldConfirm, confirmFields, dismissFieldConfirm,
+  } = useRuleGeneration();
   const [serverUp, setServerUp] = useState<boolean | null>(null);
   const [previewMode, setPreviewMode] = useState<boolean>(readPreviewMode);
   const [view, setView] = useState<'generate' | 'workbench'>('generate');
@@ -70,6 +76,14 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col" role="application" aria-label="Rules MCP Server">
       <WelcomeGuide />
+      {fieldConfirm && (
+        <FieldConfirmDialog
+          suggest={fieldConfirm.suggest}
+          onConfirm={(fields) => confirmFields(describeFields(fields))}
+          onSkip={() => confirmFields(null)}
+          onCancel={dismissFieldConfirm}
+        />
+      )}
       {clarification && (
         <ClarifyDialog
           recommend={clarification.recommend}
