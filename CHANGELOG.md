@@ -34,6 +34,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   條件轉成 FEEL unary tests（`[18..50]`、`"男","女"`、`> 50`、`-`），決策樹先攤成表再匯出。
   試算面板的模擬執行會順帶顯示「標準 DMN 引擎比對：一致／不一致」與 DMN 引擎耗時，並可下載 DMN。
 
+- **精算邊界硬擋**：`rules.bounds.file`（本地 YAML，預設讀合成示範檔 `bounds/bounds-sample.yml`）定義
+  輸出上下限（如保費係數 ≤ 2.2）與禁止組合（如 66 歲以上不得自動承保）。影響報告多 `bounds` 段；
+  送審逐列檢查，越界回 422 `BOUNDS_VIOLATION` 並提示升級給精算。決策樹先攤平再檢查。
+- **合成資料批次回歸**：有舊版可比時，依欄位型別與兩版條件的邊界值合成案件，新舊版各跑一次，
+  影響報告多 `regression` 段（筆數、改變數、新命中／不再命中／輸出改變、前 10 筆案例），審核單直接顯示。
+- **線性串接**：`rule_chain` 表（V6）與 `GET/PUT /rules/chains`、`POST /engine/chain/{key}/execute`；
+  逐步取各規則生效版，前一步輸出併入下一步輸入，`stopOnHit` 的步驟（檢核清單）命中即中斷。
+  工作台新增「流程」側欄與編輯／試跑面板。
+- **核保詞彙包**：`glossary/underwriting-vocabulary.yaml` 通用層（決議值、人工評估、保費係數、除外、延期、
+  職業類別、失能等級、敏感維度、檢核訊息，附 `semantic` 語意角色）；`rules.glossary.override-file`
+  本地覆寫同 id；`GET /tools/glossary?semantic=`；缺口補列的保守預設改查詞彙表。
+
 ### Changed
 - `POST /rules/{id}/submit` 現在要求 `{"reason": "..."}`，空白回 400。
 - `RecommendResponse` 新增 `method`、`needsClarification`、`clarifyingQuestion`、`clarifyOptions`。
