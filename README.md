@@ -162,22 +162,37 @@ STDIO 設定（Claude Desktop）：
 
 ## 效能
 
+單機實測（開發用筆電、JDK 21；JMH 1 fork、3 暖身＋5 量測；負載為 H2 記憶體庫＋`mvn spring-boot:run`，數字只供量級參考）。
+
 | 項目 | 數字 | 怎麼量 |
 |---|---|---|
+| 單次執行：決策表 FIRST，最壞情況（最後一列才命中） | 10 列 0.8 μs · 100 列 3.0 μs · 500 列 7.5 μs | JMH `ExecutionBenchmark.tableFirstWorstCase` |
+| 單次執行：開 SUMMARY 軌跡 | 比不開多 0.1–0.2 μs | JMH `ExecutionBenchmark.tableWithSummaryTrace` |
+| 單次執行：理賠示範樹（5 層）／評分卡（3 維度） | 0.7 μs／0.5 μs | JMH `ExecutionBenchmark.tree` · `.scoreCard` |
 | 重疊偵測，1000 條規則 | 1320 ms → 7.1 ms（185x） | JMH `OverlapDetectorBenchmark`，掃描線剪枝 |
+| `POST /tools/execute`，16 併發 10 秒 | p50 8.9 ms · p95 13.4 ms · p99 23.9 ms · 1,667 rps · 0 錯誤 | `node load.mjs`（含 HTTP、JSON 序列化） |
+| `POST /tools/analyze`（缺口／重疊），8 併發 | p50 7.5 ms · p95 9.7 ms · 1,061 rps | 同上 |
+| `POST /tools/recommend`（選型，純結構訊號） | p50 9.3 ms · p95 12.3 ms | 同上 |
 | `/generate` 併發時的 `/health` | 6987 ms → 126 ms | LLM 長請求改走專用有界池（DeferredResult），滿載回 429 |
-| 單次規則執行 | 內建引擎 ms 級；Camunda DMN 首次呼叫約 500 ms（FEEL 暖機），之後 ms 級 | 試算面板顯示本次耗時 |
+| Camunda DMN 交叉驗證 | 首次約 500 ms（FEEL 暖機），之後 ms 級 | 試算面板顯示 |
 
-生成耗時由 LLM 決定（本地 7B 模型一張表數十秒到兩分鐘），需在目標機器實測。重現步驟見 `docs/`。
+生成耗時由 LLM 決定（本地 7B 模型一張表數十秒到兩分鐘），要在目標機器實測。
+
+重現：
+```powershell
+mvn test-compile
+mvn dependency:build-classpath "-Dmdep.outputFile=target\cp.txt" "-Dmdep.includeScope=test"
+java -cp "target\classes;target	est-classes;$(Get-Content target\cp.txt -Raw)" com.ruleengine.rules.bench.ExecutionBenchmark
+```
 
 ## 現況與限制
 
 | 項目 | 狀態 |
 |---|---|
 | DecisionTable、DecisionTree | 生成、驗證、分析、轉換、執行、diff、DMN 匯出、Camunda 交叉驗證 |
-| ScoreCard | 可選型、生成、驗證；**執行與分數帶分析進行中** |
+| ScoreCard | 可選型、生成、驗證、執行、分數帶缺口/重疊分析、工作台檢視與試算；表↔評分卡轉換與 DMN 匯出未做 |
 | 執行引擎 | 直譯式，用於模擬與回歸；與生產引擎的差異透過 adapter SPI（`MockGroupEngine` 為示範）與 DMN 交接 |
-| 公平待遇分析、法規標註 | 規劃中（敏感維度已在詞彙包標出） |
+| 公平待遇分析、法規標籤 | 審核單顯示敏感維度的結果分布與閾值警示；「法規」為標籤維度，顯示於審核單 |
 | LLM 選型後備、AI 修改建議 | 需要本地 Ollama 模型或雲端金鑰才會真的呼叫模型；沒有時走規則與離線備援 |
 | MCP | 只有 tool 與 resource；尚無 prompt template，也還沒有「建草稿／送審」tool |
 

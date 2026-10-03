@@ -46,6 +46,15 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   職業類別、失能等級、敏感維度、檢核訊息，附 `semantic` 語意角色）；`rules.glossary.override-file`
   本地覆寫同 id；`GET /tools/glossary?semantic=`；缺口補列的保守預設改查詞彙表。
 
+- **評分卡全套**：`RuleExecutionEngine`／`RuleLookupService` 支援 ScoreCard（各維度首條成立的計分規則 × 權重加總，
+  落入分數帶；輸出含 `totalScore` 與 `scoreBreakdown`，FULL trace 逐維度記錄）；`ScoreCardAnalyzer` 報分數帶缺口／重疊與
+  維度未涵蓋的值，`/tools/analyze` 依型態路由；工作台以維度＋分數帶檢視，試算可用。
+- **公平待遇分析**：`FairnessService` 對詞彙包標為敏感維度的欄位（年齡、性別、職業）用合成案件跑規則，
+  列出各群體的結果分布；某結果在群體間比例差距超過 `rules.fairness.threshold`（預設 0.3）即警示。影響報告多 `fairness` 段。
+- **法規標籤**：標籤維度預設加入「法規」，審核單標頭顯示規則的分類／主題／法規標籤。
+- **效能基準**：`ExecutionBenchmark`（JMH：表 10／100／500 列、理賠樹、評分卡的單次執行 μs）；
+  README 補上併發負載（`/tools/execute` 16 併發 p95）數字與重現方式。
+
 ### Changed
 - `POST /rules/{id}/submit` 現在要求 `{"reason": "..."}`，空白回 400。
 - `RecommendResponse` 新增 `method`、`needsClarification`、`clarifyingQuestion`、`clarifyOptions`。
