@@ -40,6 +40,10 @@ export default defineConfig({
         target: backendTarget,
         changeOrigin: true,
       },
+      '/engine': {
+        target: backendTarget,
+        changeOrigin: true,
+      },
       '/rules': {
         target: backendTarget,
         changeOrigin: true,

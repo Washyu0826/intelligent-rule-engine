@@ -4,6 +4,7 @@ import DiffView from '../Export/DiffView';
 import ImpactPanel from './ImpactPanel';
 import RuleView from './RuleView';
 import StatusBadge from './StatusBadge';
+import TrialRunPanel from './TrialRunPanel';
 import { btnDanger, btnGhost, btnPrimary, card, errMsg, input, textPrimary, textSecondary, textTertiary } from './ui';
 
 interface Props {
@@ -83,6 +84,7 @@ export default function ReviewSheetPanel({ versionId, canReview, onChanged }: Pr
         <div className={`text-xs ${textTertiary}`}>這是首版，沒有舊版可比對；以下為完整內容。</div>
       )}
       <RuleView envelope={sheet.after} />
+      <TrialRunPanel envelope={sheet.after} ruleKey={sheet.ruleKey} status={sheet.status} />
 
       {canReview && (
         <div className={`${card} p-4 space-y-3`}>

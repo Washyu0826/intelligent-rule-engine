@@ -72,6 +72,17 @@ export interface ChangeSuggestion {
   impact: ImpactReport;
 }
 
+export interface EngineOutcome {
+  traceId: number;
+  ruleVersionId: number;
+  versionNo: number;
+  result: {
+    matched: boolean;
+    outputs?: Record<string, unknown>;
+    matchedRules?: { ruleId: string; priority?: number; outputs?: Record<string, unknown> }[];
+  };
+}
+
 export class WorkbenchError extends Error {
   constructor(message: string, public status: number) {
     super(message);
@@ -132,6 +143,9 @@ export const workbenchApi = {
   },
   gapCase(id: number, conditions: Record<string, string>): Promise<ChangeSuggestion> {
     return call('POST', `/rules/${id}/gap-case`, { conditions });
+  },
+  executeActive(ruleKey: string, input: Record<string, unknown>): Promise<EngineOutcome> {
+    return call('POST', '/engine/execute', { ruleKey, input, traceLevel: 'SUMMARY' });
   },
   submit(id: number, reason: string): Promise<VersionView> {
     return call('POST', `/rules/${id}/submit`, { reason });

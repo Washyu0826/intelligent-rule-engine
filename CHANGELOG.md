@@ -6,6 +6,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased] — 審核工作台第一批：選型、補缺口、試算
+
+### Added
+- **審核工作台**（maker／checker 分流）：樹狀目錄＋兩維標籤、送審必填理由、送審當下的影響報告快照、
+  審核單（差異＋影響＋理由）、以中文描述請 AI 提修改建議（只提案、不自動儲存）。
+  新端點：`GET /rules/tree`、`PUT /rules/{key}/placement`、`GET /rules/{id}/review-sheet`、
+  `POST /rules/{id}/suggest-change`；migration `V5__workbench.sql`。
+- **規則型態判定改為結構訊號優先**：多層編號／縮排、列舉維度＋輸出、逐條「若…則拋訊息」、
+  「條件 x.y／檢核 x.y」各有加權；信心不足才請預設 LLM 二選一（`LlmProvider.classifyRuleType`）；
+  仍判不出就回 `needsClarification` 讓前端先問一題。回應多了 `method` 與一句白話 `reason`。
+  前端結果頁新增判定橫幅（信心、理由、一鍵改型重生）與反問對話框；評分卡進入型態選項。
+- **缺口補成案例**：影響報告的 `gaps[]` 改為帶 `conditions` 的物件；`POST /rules/{id}/gap-case`
+  依缺口區間產生一列規則（決議類 ENUM 填「人工評估」，其餘留空，由驗證標為待填），
+  前端走與 AI 建議相同的前後對照→存成新草稿流程。
+- **工作台試算**：依規則 inputs 自動產生表單；草稿／送審版以 `/tools/execute` 模擬、不留軌跡，
+  生效版以 `/engine/execute` 執行並顯示軌跡編號；顯示命中規則、輸出與耗時。
+
+### Changed
+- `POST /rules/{id}/submit` 現在要求 `{"reason": "..."}`，空白回 400。
+- `RecommendResponse` 新增 `method`、`needsClarification`、`clarifyingQuestion`、`clarifyOptions`。
+
+---
+
 ## [v3.16.3] - 2026-08-18 — 共享狀態修正：ThreadLocal 跨請求污染 + 失效的 LLM 快取
 
 ### Fixed — 維度解析結果跨請求洩漏（保密 + 正確性）

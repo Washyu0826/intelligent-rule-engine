@@ -11,6 +11,7 @@ import DiffView from '../Export/DiffView';
 import ImpactPanel from './ImpactPanel';
 import RuleView from './RuleView';
 import StatusBadge from './StatusBadge';
+import TrialRunPanel from './TrialRunPanel';
 import { btnGhost, btnPrimary, card, errMsg, input, textPrimary, textSecondary, textTertiary } from './ui';
 
 interface Props {
@@ -173,6 +174,7 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
       )}
 
       {current && <RuleView envelope={current.after} />}
+      {current && <TrialRunPanel envelope={current.after} ruleKey={ruleKey} status={latest.status} />}
       <ImpactPanel
         analysis={liveAnalysis}
         title="目前版本：缺口與重疊"
