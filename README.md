@@ -21,11 +21,31 @@
 
 ## 定位：風洞，不是引擎
 
+上線前，業務部自己寫、自己驗：
+
+```mermaid
+flowchart LR
+    A["中文規格<br/>（業務部）"] --> B["確認欄位<br/>偵測條件／輸出，可改"]
+    B --> C["判型＋生成<br/>表／樹／評分卡<br/>結構訊號優先，低信心才問 LLM"]
+    C --> D["補缺口<br/>幾何分析，補成待填列"]
+    D --> E["試算<br/>內建引擎＋Camunda DMN 比對"]
+    classDef biz fill:#E3F1F0,stroke:#0E7C7B,color:#1F2A3C
+    class A,B,C,D,E biz
 ```
- 中文規格 ─► 確認欄位 ─► 判型＋生成 ─► 補缺口 ─► 試算 ─► 送審 ─► 審核 ─► 生效 ─► 執行 ─► 回放
- (業務)     偵測欄位    表/樹/評分卡   幾何分析   內建引擎  理由必填  差異＋影響  單一    留軌跡   重算比對
-            值域可改    結構訊號優先   補成待填列 DMN比對   精算邊界  回歸＋邊界  ACTIVE  append   不可竄改
-                       低信心問LLM                        硬擋                          only
+
+治理與執行，主管看證據、執行留軌跡、正式決策交給既有引擎：
+
+```mermaid
+flowchart LR
+    F["送審<br/>理由必填，精算邊界硬擋"] --> G["審核<br/>差異、影響報告、合成回歸、公平待遇"]
+    G --> H["生效<br/>單一 ACTIVE"]
+    H --> I["執行<br/>留 append-only 軌跡"]
+    I --> J["回放<br/>重算比對"]
+    H -. "DMN 1.3 交接" .-> K[("集團既有引擎<br/>正式決策")]
+    classDef gov fill:#F8EEDC,stroke:#C8872B,color:#1F2A3C
+    classDef run fill:#E2F1E7,stroke:#2E7D4F,color:#1F2A3C
+    class F,G,H gov
+    class I,J,K run
 ```
 
 - **業務部自己寫、自己審、自己驗**：制單人（業務同仁）貼規格、補缺口、試算、送審；審核人（業務主管）看差異、影響報告、合成資料回歸後核准、生效。
@@ -34,31 +54,82 @@
 
 ## 系統架構
 
+```mermaid
+flowchart TB
+    subgraph UI["React 19 SPA"]
+        direction LR
+        G1["規則生成分頁<br/>貼規格 → 欄位確認 → 判型橫幅<br/>覆蓋率／缺口／驗證／幻覺偵測"]
+        W1["審核工作台分頁<br/>maker：目錄標籤、補缺口、試算、送審<br/>checker：待審佇列、審核單、核准／生效<br/>流程：檢核 → 核保 → 費率"]
+    end
+
+    REST["REST（人與前端）"]
+    MCP["MCP（AI client，SSE／STDIO）<br/>刻意不暴露 approve／activate／retire"]
+
+    subgraph CORE["Spring Boot 3.4 · Java 21"]
+        direction LR
+        subgraph EXE["執行與交付"]
+            X1["RuleExecutionEngine<br/>表／樹／評分卡、trace"]
+            X2["RuleChainService<br/>線性串接"]
+            X3["DmnExporter＋Camunda<br/>DMN 1.3 交叉驗證"]
+            X4["Adapter SPI<br/>Group JSON／Excel"]
+        end
+        subgraph GOV["治理"]
+            V1["ReviewWorkflow<br/>6 狀態 8 轉換、四眼"]
+            V2["WorkbenchService<br/>送審理由、影響報告快照、缺口補列"]
+            V3["BoundsService<br/>精算邊界硬擋"]
+            V4["GlossaryService<br/>核保詞彙包＋本地覆寫"]
+        end
+        subgraph ANA["分析"]
+            A1["DmnAnalyzer／TreeAnalyzer<br/>超矩形缺口、重疊"]
+            A2["ScoreCardAnalyzer<br/>分數帶缺口"]
+            A3["RegressionService<br/>合成資料回歸"]
+            A4["FairnessService<br/>敏感維度分布"]
+        end
+        subgraph GEN["生成管線"]
+            R1["RuleRecommender<br/>結構訊號＋LLM 後備"]
+            R2["DescriptionDimensionParser<br/>欄位預解析、笛卡爾積補列"]
+            R3["LLM provider<br/>Claude／Gemini／OpenAI／Ollama<br/>＋離線備援"]
+        end
+    end
+
+    subgraph DB["PostgreSQL（JPA + Flyway V1–V6）"]
+        direction LR
+        T1[("rule_version<br/>JSONB envelope、submit_reason、impact_report")]
+        T2[("rule_directory／rule_tag／rule_chain")]
+        T3[("decision_trace<br/>trigger 保證 append-only")]
+    end
+
+    LOCAL["本地設定層（不進 repo）<br/>精算邊界檔、詞彙覆寫、欄位代碼、LLM 金鑰"]
+
+    UI --> REST
+    REST --> CORE
+    MCP --> CORE
+    CORE --> DB
+    CORE -. 邊界檔、詞彙覆寫、金鑰 .-> LOCAL
+
+    classDef ui fill:#E3F1F0,stroke:#0E7C7B,color:#1F2A3C
+    classDef core fill:#FFFFFF,stroke:#6B7A8C,color:#1F2A3C
+    classDef db fill:#F8EEDC,stroke:#C8872B,color:#1F2A3C
+    classDef local fill:#F6E3E6,stroke:#B23A48,color:#1F2A3C
+    class G1,W1 ui
+    class R1,R2,R3,A1,A2,A3,A4,V1,V2,V3,V4,X1,X2,X3,X4 core
+    class T1,T2,T3 db
+    class LOCAL local
 ```
-┌──────────────────────────────── React 19 SPA ─────────────────────────────────┐
-│  規則生成分頁                        審核工作台分頁                              │
-│  貼規格 → 欄位確認 → 判型橫幅        maker：目錄／標籤、補缺口、試算、送審         │
-│  覆蓋率／缺口／驗證／幻覺偵測        checker：待審佇列、審核單、核准／退回／生效     │
-│                                     流程（檢核 → 核保 → 費率）編輯與試跑           │
-└───────────────┬───────────────────────────────────────┬───────────────────────┘
-                │ REST（人與前端）                        │ MCP（AI client，SSE / STDIO）
-┌───────────────▼───────────────────────────────────────▼───────────────────────┐
-│  生成管線           分析              治理                 執行與交付              │
-│  RuleRecommender    DmnAnalyzer       ReviewWorkflow       RuleExecutionEngine   │
-│  (結構訊號+LLM後備)  (超矩形缺口/重疊)  (6 狀態 8 轉換、四眼)  (表/樹直譯、trace)     │
-│  DescriptionDim-    TreeAnalyzer      WorkbenchService     RuleChainService      │
-│  ensionParser       RegressionService (送審理由、影響報告、   (線性串接)            │
-│  LLM provider       (合成資料回歸)      缺口補列、精算邊界)   DmnExporter +         │
-│  Claude/Gemini/     ConfidenceScorer  BoundsService        Camunda 交叉驗證       │
-│  OpenAI/Ollama      (grounding/judge/  GlossaryService      Group JSON / Excel    │
-│  ＋離線備援          witness/rationale) (核保詞彙包＋本地覆寫)  adapter SPI          │
-└───────────────────────────────────────┬───────────────────────────────────────┘
-                                        │ JPA + Flyway（V1–V6）
-┌───────────────────────────────────────▼───────────────────────────────────────┐
-│  PostgreSQL：rule_version（JSONB envelope、submit_reason、impact_report）        │
-│  rule_directory / rule_tag / rule_chain / decision_trace（trigger 保證 append-only）│
-└───────────────────────────────────────────────────────────────────────────────┘
-          本地設定層（不進 repo）：精算邊界檔、公司詞彙覆寫、欄位代碼、LLM 金鑰
+
+規則版本的生命週期（送審人不得審自己的案子；同一 `ruleKey` 只能有一個 ACTIVE）：
+
+```mermaid
+stateDiagram-v2
+    [*] --> DRAFT: POST /rules
+    DRAFT --> REVIEW: submit（理由必填、精算邊界檢查）
+    REVIEW --> DRAFT: withdraw
+    REVIEW --> APPROVED: approve（checker ≠ maker）
+    REVIEW --> REJECTED: reject（意見必填）
+    REJECTED --> DRAFT: revise
+    APPROVED --> ACTIVE: activate
+    ACTIVE --> RETIRED: retire（ADMIN）
+    ACTIVE --> DRAFT: 新版本（鏈到前一版）
 ```
 
 四條主線：
