@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { api } from '../../api/rulesApi';
-import { workbenchApi } from '../../api/workbenchApi';
+import { workbenchApi, type DmnCrossCheck } from '../../api/workbenchApi';
 import type { RuleEnvelope } from '../../types';
-import { btnPrimary, card, errMsg, input, textPrimary, textSecondary, textTertiary } from './ui';
+import { btnGhost, btnPrimary, card, errMsg, input, textPrimary, textSecondary, textTertiary } from './ui';
 
 interface FieldDef {
   name: string;
@@ -60,6 +60,7 @@ export default function TrialRunPanel({ envelope, ruleKey, status }: Props) {
   }, [envelope]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [dmn, setDmn] = useState<DmnCrossCheck | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -95,11 +96,31 @@ export default function TrialRunPanel({ envelope, ruleKey, status }: Props) {
           path: r.hitPath ?? r.evaluationPath,
           elapsedMs: performance.now() - t0,
         });
+        setDmn(null);
+        try {
+          setDmn(await workbenchApi.dmnCheck(envelope, payload));
+        } catch (e) {
+          setDmn({ consistent: false, dmnMatched: false, dmnResults: [], differences: [errMsg(e)], warnings: [], dmnNanos: 0 });
+        }
       }
     } catch (e) {
       setError(errMsg(e));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const downloadDmn = async () => {
+    try {
+      const xml = await workbenchApi.dmnExportXml(envelope, ruleKey);
+      const url = URL.createObjectURL(new Blob([xml], { type: 'application/xml' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${ruleKey.replace(/[^A-Za-z0-9_.-]/g, '_')}.dmn`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError(errMsg(e));
     }
   };
 
@@ -177,6 +198,11 @@ export default function TrialRunPanel({ envelope, ruleKey, status }: Props) {
         {missing.length > 0 && (
           <span className={`text-[11px] ${textTertiary}`}>還有 {missing.length} 個欄位未填</span>
         )}
+        {(envelope.ruleType === 'DecisionTable' || envelope.ruleType === 'DecisionTree') && (
+          <button type="button" className={btnGhost} disabled={busy} onClick={() => void downloadDmn()}>
+            下載 DMN
+          </button>
+        )}
       </div>
 
       {outcome && (
@@ -207,6 +233,14 @@ export default function TrialRunPanel({ envelope, ruleKey, status }: Props) {
           )}
           {outcome.path && outcome.path.length > 0 && (
             <div className={`text-[11px] ${textTertiary}`}>路徑：{outcome.path.join(' → ')}</div>
+          )}
+          {dmn && (
+            <div className={`text-[11px] pt-1 border-t dark:border-border border-light-border ${dmn.consistent ? textSecondary : 'text-red-600'}`}>
+              標準 DMN 引擎（Camunda）比對：{dmn.consistent ? '一致' : '不一致'}
+              {dmn.dmnNanos > 0 && <span className={textTertiary}>&emsp;DMN 引擎耗時 {(dmn.dmnNanos / 1e6).toFixed(1)} ms</span>}
+              {dmn.differences.length > 0 && <div>{dmn.differences.join('；')}</div>}
+              {dmn.warnings.length > 0 && <div className={textTertiary}>{dmn.warnings.join('；')}</div>}
+            </div>
           )}
         </div>
       )}

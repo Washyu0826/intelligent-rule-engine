@@ -288,6 +288,11 @@ public class WorkbenchService {
             report.set("behaviorDiff", objectMapper.valueToTree(ruleDiffService.diff(before, after)));
         }
 
+        if (isChecklist(after)) {
+            report.put("checklist", true);
+            report.put("note", "檢核清單（多重命中）：每條檢核各自獨立，不做缺口與重疊分析");
+            return report;
+        }
         var analysis = ruleService.analyze(ToolDtos.AnalyzeRequest.builder()
                 .ruleJson(objectMapper.valueToTree(after)).ruleType(after.getRuleType()).build());
         ObjectNode a = report.putObject("analysis");
@@ -307,6 +312,13 @@ public class WorkbenchService {
             analysis.getOverlaps().stream().limit(MAX_LISTED).forEach(o -> overlaps.add(o.getMessage()));
         }
         return report;
+    }
+
+    /** 多重命中的決策表 = 檢核清單：每條各自獨立，缺口／重疊分析不適用（Q11）。 */
+    static boolean isChecklist(RuleEnvelope envelope) {
+        return envelope != null && "DecisionTable".equalsIgnoreCase(envelope.getRuleType())
+                && envelope.getRule() != null
+                && "MULTI".equalsIgnoreCase(envelope.getRule().getHitPolicy());
     }
 
     // ================================================================

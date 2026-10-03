@@ -38,7 +38,7 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
       const sheet = await workbenchApi.reviewSheet(latest.id);
       setCurrent(sheet);
       setLiveAnalysis(sheet.impact.analysis);
-      if (sheet.after.ruleType === 'DecisionTable' || sheet.after.ruleType === 'DecisionTree') {
+      if (!sheet.impact.checklist && (sheet.after.ruleType === 'DecisionTable' || sheet.after.ruleType === 'DecisionTree')) {
         const a = await api.analyze(sheet.after.rule, sheet.after.ruleType);
         setLiveAnalysis({
           coverageRate: a.coverageRate,
@@ -175,12 +175,16 @@ export default function RuleEditor({ ruleKey, latest, onChanged }: Props) {
 
       {current && <RuleView envelope={current.after} />}
       {current && <TrialRunPanel envelope={current.after} ruleKey={ruleKey} status={latest.status} />}
+      {current?.impact.checklist ? (
+        <div className={`${card} p-4 text-xs ${textTertiary}`}>檢核清單（多重命中）：每項各自獨立，不做缺口與重疊分析</div>
+      ) : (
       <ImpactPanel
         analysis={liveAnalysis}
         title="目前版本：缺口與重疊"
         onFillGap={editable && current?.after.ruleType === 'DecisionTable' ? fillGap : undefined}
         busy={!!busy}
       />
+      )}
 
       {editable && (
         <div className={`${card} p-4 space-y-2`}>

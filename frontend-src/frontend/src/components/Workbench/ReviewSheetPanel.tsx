@@ -76,7 +76,9 @@ export default function ReviewSheetPanel({ versionId, canReview, onChanged }: Pr
         {sheet.impact.note && <div className="text-xs text-amber-600">{sheet.impact.note}</div>}
       </div>
 
-      <ImpactPanel analysis={sheet.impact.analysis} title="影響報告：缺口與重疊（送審當下的快照）" />
+      {!sheet.impact.checklist && (
+        <ImpactPanel analysis={sheet.impact.analysis} title="影響報告：缺口與重疊（送審當下的快照）" />
+      )}
 
       {sheet.before ? (
         <DiffView current={sheet.after} previous={sheet.before} />

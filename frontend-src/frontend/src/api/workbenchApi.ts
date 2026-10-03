@@ -47,6 +47,8 @@ export interface ImpactAnalysis {
 export interface ImpactReport {
   firstVersion: boolean;
   note?: string;
+  /** 多重命中的檢核清單：不做缺口／重疊分析 */
+  checklist?: boolean;
   analysis?: ImpactAnalysis;
   [key: string]: unknown;
 }
@@ -81,6 +83,15 @@ export interface EngineOutcome {
     outputs?: Record<string, unknown>;
     matchedRules?: { ruleId: string; priority?: number; outputs?: Record<string, unknown> }[];
   };
+}
+
+export interface DmnCrossCheck {
+  consistent: boolean;
+  dmnMatched: boolean;
+  dmnResults: Record<string, unknown>[];
+  differences: string[];
+  warnings: string[];
+  dmnNanos: number;
 }
 
 export class WorkbenchError extends Error {
@@ -146,6 +157,18 @@ export const workbenchApi = {
   },
   executeActive(ruleKey: string, input: Record<string, unknown>): Promise<EngineOutcome> {
     return call('POST', '/engine/execute', { ruleKey, input, traceLevel: 'SUMMARY' });
+  },
+  dmnCheck(envelope: RuleEnvelope, inputValues: Record<string, unknown>): Promise<DmnCrossCheck> {
+    return call('POST', '/tools/dmn/check', { envelope, inputValues });
+  },
+  async dmnExportXml(envelope: RuleEnvelope, name: string): Promise<string> {
+    const res = await fetch('/tools/dmn/export.xml', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...bearerHeader() },
+      body: JSON.stringify({ envelope, name }),
+    });
+    if (!res.ok) throw new WorkbenchError(`DMN 匯出失敗（${res.status}）`, res.status);
+    return res.text();
   },
   submit(id: number, reason: string): Promise<VersionView> {
     return call('POST', `/rules/${id}/submit`, { reason });
